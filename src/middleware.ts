@@ -97,6 +97,24 @@ const LIVE_PATHS = new Set<string>([
 // Static asset extensions Next dev/prod might let through to middleware.
 const ASSET_EXT = /\.(?:png|jpe?g|gif|svg|webp|avif|ico|css|js|map|txt|xml|woff2?|ttf|otf|mp4|webm|pdf)$/i;
 
+/**
+ * Vercel preview deployments serve identical content to production with the
+ * default `index, follow` robots meta — Google indexes them as a separate
+ * host, splitting authority signals from production. Tell crawlers to skip
+ * any non-production host. The page-level canonical link is preserved.
+ */
+function isNonCanonicalHost(req: NextRequest): boolean {
+  const host = (req.headers.get('host') ?? '').toLowerCase();
+  return host.endsWith('.vercel.app');
+}
+
+function withSeoHeaders(res: NextResponse, req: NextRequest): NextResponse {
+  if (isNonCanonicalHost(req)) {
+    res.headers.set('X-Robots-Tag', 'noindex, nofollow');
+  }
+  return res;
+}
+
 export async function middleware(req: NextRequest) {
   const { pathname } = req.nextUrl;
 
@@ -108,7 +126,7 @@ export async function middleware(req: NextRequest) {
     pathname === '/favicon.ico' ||
     ASSET_EXT.test(pathname)
   ) {
-    return NextResponse.next();
+    return withSeoHeaders(NextResponse.next(), req);
   }
 
   // Fast path: live app routes have no legacy redirects, so skip the DB hit.
@@ -117,22 +135,22 @@ export async function middleware(req: NextRequest) {
     ? pathname.slice(0, -1)
     : pathname;
   if (LIVE_PATHS.has(normalised)) {
-    return NextResponse.next();
+    return withSeoHeaders(NextResponse.next(), req);
   }
 
   const hit = await lookup(pathname, req.nextUrl.origin);
-  if (!hit || !hit.active) return NextResponse.next();
+  if (!hit || !hit.active) return withSeoHeaders(NextResponse.next(), req);
 
   if (hit.statusCode === 410) {
-    return new NextResponse('Gone', { status: 410 });
+    return withSeoHeaders(new NextResponse('Gone', { status: 410 }), req);
   }
   if (hit.to) {
     const dest = hit.to.startsWith('http')
       ? hit.to
       : new URL(hit.to, req.nextUrl.origin).toString();
-    return NextResponse.redirect(dest, hit.statusCode);
+    return withSeoHeaders(NextResponse.redirect(dest, hit.statusCode), req);
   }
-  return NextResponse.next();
+  return withSeoHeaders(NextResponse.next(), req);
 }
 
 export const config = {
