@@ -39,7 +39,7 @@ src/app/api/seo-agent/lib/
   ├── digest.ts                                 # Resend email composer
   └── orchestrate.ts                            # runs the pipeline end-to-end
 scripts/seo-agent-local.mjs                     # dry-run harness
-vercel.json                                     # cron entry: Mondays 07:00 UTC
+vercel.json                                     # cron entry: 1st of each month, 07:00 UTC
 ```
 
 ## Environment variables
@@ -96,7 +96,7 @@ to test the digest render against current GSC data without persisting.
 
 ## Reading the digest
 
-The Monday email summarises three sections (meta rewrites, on-page tweaks,
+The monthly email summarises three sections (meta rewrites, on-page tweaks,
 new articles), each with a small table of query / position / CTR /
 impressions. The primary CTA links to:
 
