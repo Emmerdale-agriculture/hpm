@@ -1,8 +1,18 @@
 import type { CollectionConfig } from 'payload';
+import { revalidateTag } from 'next/cache';
 import { seoFields } from '../fields/seo';
 import { slugField } from '../fields/slug';
 import { allContentBlocks } from '../blocks/content-blocks';
 import { autoDerive } from '../hooks/auto-derive';
+
+const revalidatePosts = () => {
+  try {
+    revalidateTag('posts');
+  } catch {
+    // revalidateTag throws if called outside a request scope (e.g. seed scripts).
+    // Safe to ignore — the cache will refresh on its own TTL.
+  }
+};
 
 /**
  * Posts — blog posts.
@@ -38,6 +48,8 @@ export const Posts: CollectionConfig = {
     // ground-care, advice, drainage, kit). Authors can still override
     // either field by hand — auto-derive only fills when they're blank.
     beforeValidate: [autoDerive({ excerpt: true, tags: true })],
+    afterChange: [revalidatePosts],
+    afterDelete: [revalidatePosts],
   },
   defaultSort: '-publishedAt',
   fields: [
