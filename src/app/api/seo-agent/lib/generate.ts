@@ -42,8 +42,10 @@ OUTPUT (strict JSON, no preamble):
 const META_SYSTEM = `You write title tags and meta descriptions for Hampshire Paddock Management. Produce three alternatives that improve CTR for the target query while staying truthful and on-brand.
 
 CONSTRAINTS:
-- Title: max 60 characters including spaces.
-- Meta: max 155 characters including spaces.
+- Title: max 60 characters including spaces. Aim for 50–58.
+- Meta: max 155 characters including spaces. Aim for 140–150 to leave headroom.
+- Always end with a complete sentence. Never truncate mid-word or mid-thought to fit the limit — rephrase shorter instead.
+- Never use ellipsis ("...") to indicate continuation. Each alternative must read as finished copy.
 - British English.
 - Do not promise prices, speed, or guarantees.
 - Include the geographic qualifier (Hampshire / South of England) where it fits naturally.
@@ -177,10 +179,38 @@ export async function generateOnPageTweak(
 
 // --- validators ---------------------------------------------------------
 
+// Trim to a complete-sentence (or at minimum, complete-word) boundary
+// instead of slicing mid-word and appending an ellipsis. The model is
+// instructed not to overshoot, but if it does, this keeps the output
+// usable as-is on the SERP rather than producing literal "..." in
+// production meta tags.
+function trimMeta(s: string, max: number): string {
+  if (s.length <= max) return s;
+  const cut = s.slice(0, max);
+  // Prefer cutting at the last sentence boundary that's not too far back
+  const sentenceMatch = cut.match(/^.*[.!?](?=\s|$)/s);
+  if (sentenceMatch && sentenceMatch[0].length >= Math.floor(max * 0.6)) {
+    return sentenceMatch[0].trim();
+  }
+  // Otherwise cut at the last word boundary, terminate with a period
+  const lastSpace = cut.lastIndexOf(' ');
+  if (lastSpace > Math.floor(max * 0.5)) {
+    return cut.slice(0, lastSpace).replace(/[,;:\-]\s*$/, '').trim() + '.';
+  }
+  return cut.trim();
+}
+
+function trimTitle(s: string, max: number): string {
+  if (s.length <= max) return s;
+  const cut = s.slice(0, max);
+  const lastSpace = cut.lastIndexOf(' ');
+  return (lastSpace > Math.floor(max * 0.5) ? cut.slice(0, lastSpace) : cut).trim();
+}
+
 function validateArticle(d: NewArticleDraft): NewArticleDraft | null {
   if (!d.title || !d.bodyMarkdown || !d.slug) return null;
-  if (d.metaDescription && d.metaDescription.length > 200) {
-    d.metaDescription = d.metaDescription.slice(0, 197) + '...';
+  if (d.metaDescription) {
+    d.metaDescription = trimMeta(d.metaDescription, 200);
   }
   if (!Array.isArray(d.suggestedInternalLinks)) d.suggestedInternalLinks = [];
   return d;
@@ -191,8 +221,8 @@ function validateMeta(d: MetaRewriteDraft): MetaRewriteDraft | null {
   d.alternatives = d.alternatives
     .filter((a) => a.title && a.meta)
     .map((a) => ({
-      title: a.title.length > 60 ? a.title.slice(0, 60) : a.title,
-      meta: a.meta.length > 155 ? a.meta.slice(0, 152) + '...' : a.meta,
+      title: trimTitle(a.title, 60),
+      meta: trimMeta(a.meta, 155),
       rationale: a.rationale ?? '',
     }));
   return d.alternatives.length > 0 ? d : null;
