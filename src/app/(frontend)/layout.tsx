@@ -3,6 +3,7 @@ import Script from 'next/script';
 import { Tenor_Sans, DM_Sans } from 'next/font/google';
 import './globals.css';
 import { SITE_EMAIL, SITE_PHONE_TEL } from '@/lib/site';
+import { jsonLd } from '@/lib/jsonld';
 
 // Hampshire Green typography stack.
 // Tenor Sans = display headings (gentle, editorial)
@@ -123,7 +124,7 @@ export default function RootLayout({
           not next/script (which is lazy / client-side only). */}
       <script
         type="application/ld+json"
-        dangerouslySetInnerHTML={{ __html: JSON.stringify(localBusinessJsonLd) }}
+        dangerouslySetInnerHTML={{ __html: jsonLd(localBusinessJsonLd) }}
       />
       {enablePlausible && (
         <Script

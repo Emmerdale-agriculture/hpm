@@ -254,7 +254,7 @@ export async function runAgent(opts: RunOptions): Promise<AgentRunSummary> {
       const persisted = await payload.find({
         collection: 'seo-opportunities',
         where: { weekIdentified: { equals: weekIdentified } },
-        limit: 0,
+        limit: 500,
         depth: 0,
       });
       const docs = persisted.docs;

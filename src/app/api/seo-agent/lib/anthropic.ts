@@ -70,19 +70,24 @@ export async function callJson<T>(args: {
   let lastErr: unknown;
   for (let attempt = 0; attempt < 2; attempt++) {
     try {
-      const res = await client.messages.create({
-        model,
-        max_tokens: maxTokens,
-        // Cache the system prompt across calls within a run (5-min TTL).
-        system: [
-          {
-            type: 'text',
-            text: system,
-            cache_control: { type: 'ephemeral' },
-          },
-        ],
-        messages: [{ role: 'user', content: user }],
-      });
+      // Hard ceiling so a stalled upstream can't burn the whole 5-min
+      // function budget. Opus drafts can take ~30s, so 90s is generous.
+      const res = await client.messages.create(
+        {
+          model,
+          max_tokens: maxTokens,
+          // Cache the system prompt across calls within a run (5-min TTL).
+          system: [
+            {
+              type: 'text',
+              text: system,
+              cache_control: { type: 'ephemeral' },
+            },
+          ],
+          messages: [{ role: 'user', content: user }],
+        },
+        { timeout: 90_000 },
+      );
 
       if (budget) {
         budget.add(model, res.usage.input_tokens, res.usage.output_tokens);

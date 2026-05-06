@@ -1,16 +1,34 @@
-import type { CollectionConfig } from 'payload';
+import type { CollectionAfterChangeHook, CollectionAfterDeleteHook, CollectionConfig } from 'payload';
 import { revalidateTag } from 'next/cache';
 import { seoFields } from '../fields/seo';
 import { slugField } from '../fields/slug';
 import { allContentBlocks } from '../blocks/content-blocks';
 import { autoDerive } from '../hooks/auto-derive';
 
-const revalidatePosts = () => {
+// Only revalidate when the published view actually changes — i.e. a doc
+// transitions to/from `published`, or a published doc is edited. Drafts
+// autosave every 2s; revalidating on each autosave would hammer the
+// Next.js cache for in-progress edits that don't affect public pages.
+const revalidatePosts: CollectionAfterChangeHook = ({ doc, previousDoc }) => {
+  const wasPublic = previousDoc?._status === 'published';
+  const isPublic = doc?._status === 'published';
+  // Skip pure draft activity (create, autosave, draft-only edits).
+  // Revalidate on publish, unpublish, and edits to published docs.
+  if (!wasPublic && !isPublic) return;
   try {
     revalidateTag('posts');
   } catch {
     // revalidateTag throws if called outside a request scope (e.g. seed scripts).
     // Safe to ignore — the cache will refresh on its own TTL.
+  }
+};
+
+const revalidatePostsOnDelete: CollectionAfterDeleteHook = ({ doc }) => {
+  if (doc?._status !== 'published') return;
+  try {
+    revalidateTag('posts');
+  } catch {
+    // see above
   }
 };
 
@@ -49,7 +67,7 @@ export const Posts: CollectionConfig = {
     // either field by hand — auto-derive only fills when they're blank.
     beforeValidate: [autoDerive({ excerpt: true, tags: true })],
     afterChange: [revalidatePosts],
-    afterDelete: [revalidatePosts],
+    afterDelete: [revalidatePostsOnDelete],
   },
   defaultSort: '-publishedAt',
   fields: [

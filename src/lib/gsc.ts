@@ -99,6 +99,7 @@ export async function exchangeCodeForTokens(
       redirect_uri: buildOAuthRedirectUri(origin),
       grant_type: 'authorization_code',
     }),
+    signal: AbortSignal.timeout(15_000),
   });
   if (!res.ok) {
     throw new Error(`OAuth code exchange failed: ${res.status} ${await res.text()}`);
@@ -124,6 +125,7 @@ export async function exchangeCodeForTokens(
 export async function fetchUserEmail(accessToken: string): Promise<string | null> {
   const res = await fetch('https://www.googleapis.com/oauth2/v2/userinfo', {
     headers: { Authorization: `Bearer ${accessToken}` },
+    signal: AbortSignal.timeout(10_000),
   });
   if (!res.ok) return null;
   const json = (await res.json()) as { email?: string };
@@ -143,6 +145,7 @@ async function getAccessTokenFromRefresh(refreshToken: string): Promise<string> 
       client_secret: process.env.GOOGLE_OAUTH_CLIENT_SECRET!,
       grant_type: 'refresh_token',
     }),
+    signal: AbortSignal.timeout(15_000),
   });
   if (!res.ok) {
     throw new Error(`OAuth refresh failed: ${res.status} ${await res.text()}`);
@@ -201,6 +204,7 @@ export async function gscQuery(args: GscQueryArgs): Promise<GscRow[]> {
       dimensions: args.dimensions ?? [],
       rowLimit: args.rowLimit ?? 25,
     }),
+    signal: AbortSignal.timeout(30_000),
   });
   if (!res.ok) {
     throw new Error(`GSC query failed: ${res.status} ${await res.text()}`);

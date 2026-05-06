@@ -15,6 +15,7 @@ import { Footer } from '@/components/Footer';
 import { PhoneStrip } from '@/components/PhoneStrip';
 import { renderLexical, collectUploadIds } from '@/lib/lexical';
 import { mediaUrl } from '@/lib/media';
+import { jsonLd } from '@/lib/jsonld';
 
 type Params = { slug: string };
 
@@ -226,7 +227,7 @@ export default async function ServicePage({ params }: { params: Promise<Params> 
         id="ld-service"
         type="application/ld+json"
         strategy="afterInteractive"
-        dangerouslySetInnerHTML={{ __html: JSON.stringify(serviceSchema) }}
+        dangerouslySetInnerHTML={{ __html: jsonLd(serviceSchema) }}
       />
     </>
   );

@@ -210,7 +210,9 @@ function trimTitle(s: string, max: number): string {
 function validateArticle(d: NewArticleDraft): NewArticleDraft | null {
   if (!d.title || !d.bodyMarkdown || !d.slug) return null;
   if (d.metaDescription) {
-    d.metaDescription = trimMeta(d.metaDescription, 200);
+    // 155 to match the system prompt and validateMeta below — Google
+    // truncates around 155–160 chars on desktop.
+    d.metaDescription = trimMeta(d.metaDescription, 155);
   }
   if (!Array.isArray(d.suggestedInternalLinks)) d.suggestedInternalLinks = [];
   return d;

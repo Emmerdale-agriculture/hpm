@@ -12,6 +12,7 @@ import { Footer } from '@/components/Footer';
 import { mediaUrl } from '@/lib/media';
 import { renderLexical, collectUploadIds } from '@/lib/lexical';
 import { serviceForTag } from '@/lib/tag-service-map';
+import { jsonLd } from '@/lib/jsonld';
 import styles from './post.module.css';
 
 type Params = { slug: string };
@@ -189,6 +190,9 @@ export default async function NotePostPage({
   // ----- Related posts -----
   // 1. Tagged-overlap candidates, 2. rank by overlap then recency,
   // 3. fill with most-recent if short.
+  // The 100-most-recent window is enough to find any reasonable tag
+  // overlap (current corpus is ~50 posts) and bounds the query as the
+  // blog grows. depth: 1 hydrates heroImage on the candidates we keep.
   const all = await payload.find({
     collection: 'posts',
     where: {
@@ -198,7 +202,7 @@ export default async function NotePostPage({
       ],
     },
     sort: '-publishedAt',
-    limit: 0,
+    limit: 100,
     depth: 1,
   });
 
@@ -265,7 +269,7 @@ export default async function NotePostPage({
         id="post-schema"
         type="application/ld+json"
         // eslint-disable-next-line react/no-danger
-        dangerouslySetInnerHTML={{ __html: JSON.stringify(articleSchema) }}
+        dangerouslySetInnerHTML={{ __html: jsonLd(articleSchema) }}
       />
 
       {/* ===== POST HERO ===== */}
