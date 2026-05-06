@@ -151,7 +151,7 @@ function renderHtml(args: {
     ${args.sections.join('\n')}
     ${errorsBlock}
     <p style="margin:32px 0 0;text-align:center;">
-      <a href="${args.adminUrl}" style="display:inline-block;background:#111;color:#fff;text-decoration:none;padding:12px 20px;border-radius:6px;font-size:14px;font-weight:600;">Review this week's opportunities</a>
+      <a href="${escapeHtml(args.adminUrl)}" style="display:inline-block;background:#111;color:#fff;text-decoration:none;padding:12px 20px;border-radius:6px;font-size:14px;font-weight:600;">Review this week's opportunities</a>
     </p>
     <p style="margin:24px 0 0;color:#888;font-size:12px;text-align:center;">${escapeHtml(args.runFooter)}</p>
   </div>

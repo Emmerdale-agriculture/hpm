@@ -6,6 +6,11 @@ const SITE_URL = (
   process.env.NEXT_PUBLIC_SITE_URL || 'https://hampshirepaddockmanagement.com'
 ).replace(/\/$/, '');
 
+// Without this, Next.js generates the sitemap at build time only, so
+// posts/services published after deploy don't appear until the next push.
+// 1h ISR matches the rest of the public pages.
+export const revalidate = 3600;
+
 export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
   const payload = await getPayload({ config });
 
@@ -26,14 +31,14 @@ export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
     payload.find({
       collection: 'services',
       where: { category: { exists: true } }, // skip orphan / non-canonical entries
-      limit: 0,
+      limit: 500,
       depth: 0,
       select: { slug: true, updatedAt: true },
     }),
     payload.find({
       collection: 'posts',
       where: { _status: { equals: 'published' } },
-      limit: 0,
+      limit: 1000,
       depth: 0,
       select: { slug: true, updatedAt: true },
     }),

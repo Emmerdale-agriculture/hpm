@@ -11,6 +11,7 @@ import { Breadcrumb } from '@/components/Breadcrumb';
 import { FaqAccordion, type FaqItem } from '@/components/paddock-maintenance/FaqAccordion';
 import { mediaUrl } from '@/lib/media';
 import { SITE_PHONE_TEL } from '@/lib/site';
+import { jsonLd } from '@/lib/jsonld';
 import styles from './paddock-maintenance.module.css';
 
 /**
@@ -235,11 +236,11 @@ export default async function PaddockMaintenancePage() {
           <script> rather than next/script (which is lazy-loaded). */}
       <script
         type="application/ld+json"
-        dangerouslySetInnerHTML={{ __html: JSON.stringify(serviceJsonLd) }}
+        dangerouslySetInnerHTML={{ __html: jsonLd(serviceJsonLd) }}
       />
       <script
         type="application/ld+json"
-        dangerouslySetInnerHTML={{ __html: JSON.stringify(faqJsonLd) }}
+        dangerouslySetInnerHTML={{ __html: jsonLd(faqJsonLd) }}
       />
 
       {/* HERO */}

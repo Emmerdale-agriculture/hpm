@@ -1,5 +1,6 @@
 import Link from 'next/link';
 import Script from 'next/script';
+import { jsonLd as serializeJsonLd } from '@/lib/jsonld';
 import styles from './Breadcrumb.module.css';
 
 export type Crumb = {
@@ -82,7 +83,7 @@ export function Breadcrumb({
           id={`breadcrumb-jsonld-${trail.map((c) => c.label).join('-').replace(/\s+/g, '-')}`}
           type="application/ld+json"
           // eslint-disable-next-line react/no-danger
-          dangerouslySetInnerHTML={{ __html: JSON.stringify(schema) }}
+          dangerouslySetInnerHTML={{ __html: serializeJsonLd(schema) }}
         />
       )}
     </>
