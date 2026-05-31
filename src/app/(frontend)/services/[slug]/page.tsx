@@ -1,7 +1,6 @@
 import { cache } from 'react';
 import type { Metadata } from 'next';
 import { notFound } from 'next/navigation';
-import Script from 'next/script';
 import { getPayload } from 'payload';
 import config from '@payload-config';
 import { SITE_EMAIL, SITE_PHONE_TEL } from '@/lib/site';

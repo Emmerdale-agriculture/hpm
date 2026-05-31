@@ -19,4 +19,9 @@ export const SITE_EMAIL = 'tom@hampshirepaddockmanagement.com';
  * profiles here. Left empty until the real URLs are supplied; the JSON-LD
  * omits `sameAs` entirely when this is empty.
  */
-export const SITE_SOCIAL_LINKS: string[] = [];
+export const SITE_SOCIAL_LINKS: string[] = [
+  'https://www.facebook.com/hampshirepaddockmanagement/',
+  'https://www.instagram.com/hampshirepaddockmanagement/',
+  'https://www.tiktok.com/@emmerdale.agricul',
+  'https://maps.app.goo.gl/xeEkogGnC9GZaQkMA',
+];
