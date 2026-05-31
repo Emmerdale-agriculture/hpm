@@ -7,7 +7,7 @@
   "scripts": {
     "dev": "next dev",
     "dev:turbo": "next dev --turbopack",
-    "build": "next build",
+    "build": "payload generate:types && next build",
     "start": "next start",
     "lint": "next lint",
     "type-check": "tsc --noEmit",

@@ -17,12 +17,6 @@ type MediaLike = {
   width?: number | null;
   height?: number | null;
   sizes?: Partial<Record<MediaSize, { filename?: string | null; width?: number | null; height?: number | null }>> | null;
-  // Index signature so a populated Payload upload doc (typed by the
-  // build-time-generated `JsonObject & TypeWithID`) is structurally
-  // assignable here. Without it MediaLike is a "weak type" — every property
-  // optional — and TS rejects the payload doc with "no properties in common",
-  // which broke the Vercel build (the generated types differ from local).
-  [key: string]: unknown;
 };
 
 /**
