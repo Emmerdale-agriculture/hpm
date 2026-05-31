@@ -58,7 +58,9 @@ export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
     .map((p) => ({
       url: `${SITE_URL}/notes/${p.slug}`,
       lastModified: p.updatedAt ? new Date(p.updatedAt) : now,
-      changeFrequency: 'yearly' as const,
+      // 'monthly' (not 'yearly') — posts get edited/refreshed and the /notes
+      // index is 'weekly'; aligning signals that posts can change.
+      changeFrequency: 'monthly' as const,
       priority: 0.6,
     }));
 

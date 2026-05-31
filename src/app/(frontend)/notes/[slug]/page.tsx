@@ -2,7 +2,6 @@ import { cache } from 'react';
 import type { Metadata } from 'next';
 import Image from 'next/image';
 import Link from 'next/link';
-import Script from 'next/script';
 import { notFound } from 'next/navigation';
 import { getPayload } from 'payload';
 import config from '@payload-config';
@@ -269,6 +268,8 @@ export default async function NotePostPage({
     headline: post.title,
     image: heroUrl ? [heroUrl] : undefined,
     datePublished: post.publishedAt ?? undefined,
+    dateModified: post.updatedAt ?? post.publishedAt ?? undefined,
+    wordCount: wordCountFromContent(content) || undefined,
     author: { '@type': 'Person', name: 'Tom Oswald' },
     publisher: {
       '@type': 'Organization',
@@ -284,8 +285,7 @@ export default async function NotePostPage({
 
   return (
     <>
-      <Script
-        id="post-schema"
+      <script
         type="application/ld+json"
         // eslint-disable-next-line react/no-danger
         dangerouslySetInnerHTML={{ __html: jsonLd(articleSchema) }}

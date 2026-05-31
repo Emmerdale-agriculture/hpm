@@ -2,7 +2,7 @@ import type { Metadata } from 'next';
 import Script from 'next/script';
 import { Tenor_Sans, DM_Sans } from 'next/font/google';
 import './globals.css';
-import { SITE_EMAIL, SITE_PHONE_TEL } from '@/lib/site';
+import { SITE_EMAIL, SITE_PHONE_TEL, SITE_SOCIAL_LINKS } from '@/lib/site';
 import { jsonLd } from '@/lib/jsonld';
 
 // Hampshire Green typography stack.
@@ -91,7 +91,10 @@ export default function RootLayout({
   ).replace(/\/$/, '');
   const localBusinessJsonLd = {
     '@context': 'https://schema.org',
-    '@type': 'LocalBusiness',
+    // ProfessionalService is a LocalBusiness subtype — declaring both gives
+    // Google the precise "service business" intent while keeping LocalBusiness
+    // for the local pack.
+    '@type': ['LocalBusiness', 'ProfessionalService'],
     '@id': `${siteUrl}/#business`,
     name: 'Hampshire Paddock Management',
     legalName: 'Emmerdale Agriculture Limited',
@@ -105,6 +108,29 @@ export default function RootLayout({
       addressRegion: 'Hampshire',
       addressCountry: 'GB',
     },
+    contactPoint: {
+      '@type': 'ContactPoint',
+      contactType: 'customer service',
+      telephone: SITE_PHONE_TEL,
+      email: SITE_EMAIL,
+      areaServed: 'GB',
+      availableLanguage: 'English',
+    },
+    openingHoursSpecification: [
+      {
+        '@type': 'OpeningHoursSpecification',
+        dayOfWeek: [
+          'Monday',
+          'Tuesday',
+          'Wednesday',
+          'Thursday',
+          'Friday',
+          'Saturday',
+        ],
+        opens: '08:00',
+        closes: '18:00',
+      },
+    ],
     areaServed: [
       { '@type': 'AdministrativeArea', name: 'Hampshire' },
       { '@type': 'AdministrativeArea', name: 'Wiltshire' },
@@ -115,6 +141,9 @@ export default function RootLayout({
       { '@type': 'AdministrativeArea', name: 'East Sussex' },
     ],
     serviceType: 'Paddock maintenance',
+    // Ties the site to the business's other web presences (Google Business
+    // Profile, social) — only emitted once real URLs are added to site.ts.
+    ...(SITE_SOCIAL_LINKS.length > 0 ? { sameAs: SITE_SOCIAL_LINKS } : {}),
   };
 
   return (

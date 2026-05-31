@@ -17,7 +17,12 @@ export const metadata: Metadata = {
   title: 'Get a quote — Hampshire Paddock Management',
   description:
     'Tell me about your paddock — usually replies within hours, day or night. Hampshire and surrounding counties.',
+  alternates: { canonical: '/contact' },
 };
+
+// ISR so Payload media changes (revalidateTag('media')) flow through without
+// a full redeploy.
+export const revalidate = 3600;
 
 // Reuse the John Deere 6250R for the contact hero — it's already optimised
 // (large variant) and recognisable. Same id used on /services hero.

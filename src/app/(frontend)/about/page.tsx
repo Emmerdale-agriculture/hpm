@@ -16,7 +16,12 @@ export const metadata: Metadata = {
   title: 'About — Hampshire Paddock Management',
   description:
     "Tom runs Hampshire Paddock Management — modern compact equipment, full-time paddock work across Hampshire, Wiltshire, Berkshire, Surrey, Dorset and West Sussex.",
+  alternates: { canonical: '/about' },
 };
+
+// ISR so Payload media changes (revalidateTag('media')) flow through without
+// a full redeploy; matches the other public pages.
+export const revalidate = 3600;
 
 // Photos are static here — cache the media lookups so we don't pay the
 // Payload round-trip every render.

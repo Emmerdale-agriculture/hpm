@@ -15,7 +15,12 @@ export const metadata: Metadata = {
   title: 'Gallery — Hampshire Paddock Management',
   description:
     'Photos of the Hampshire Paddock Management fleet and paddock work across Hampshire, Wiltshire, Berkshire, Surrey, Dorset and East Sussex.',
+  alternates: { canonical: '/gallery' },
 };
+
+// ISR so new gallery uploads (revalidateTag('media')) appear without a full
+// redeploy.
+export const revalidate = 3600;
 
 // Hardcoded gallery hero — real photo from the imports (id=39 Burcombe
 // Estate Vinery paddock management). Swap in admin later if needed.

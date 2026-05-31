@@ -24,19 +24,31 @@ import styles from './paddock-maintenance.module.css';
  *     for a year-round relationship.
  */
 
-export const metadata: Metadata = {
-  title: { absolute: 'Paddock Maintenance — Full Guide & Services | Hampshire Paddock Management' },
-  description:
-    "Everything paddock maintenance involves — seasonal schedule, full service list, how pricing works, and how to get year-round contract maintenance across Hampshire and the surrounding counties.",
-  alternates: { canonical: '/paddock-maintenance' },
-  openGraph: {
-    title: 'Paddock Maintenance — Full Guide & Services',
+export async function generateMetadata(): Promise<Metadata> {
+  // Reuse the cached hero photo as the OG/social preview image so this pillar
+  // page gets a real image instead of the generic site default.
+  const hero = await getHeroPhoto();
+  const ogImage =
+    mediaUrl(hero as Parameters<typeof mediaUrl>[0], 'large') ??
+    mediaUrl(hero as Parameters<typeof mediaUrl>[0]);
+  return {
+    title: { absolute: 'Paddock Maintenance — Full Guide & Services | Hampshire Paddock Management' },
     description:
-      "The complete picture: what paddock maintenance involves, when each job matters, how it's priced, and how to get someone reliable doing it for you.",
-    type: 'article',
-    url: '/paddock-maintenance',
-  },
-};
+      "Everything paddock maintenance involves — seasonal schedule, full service list, how pricing works, and how to get year-round contract maintenance across Hampshire and the surrounding counties.",
+    alternates: { canonical: '/paddock-maintenance' },
+    openGraph: {
+      title: 'Paddock Maintenance — Full Guide & Services',
+      description:
+        "The complete picture: what paddock maintenance involves, when each job matters, how it's priced, and how to get someone reliable doing it for you.",
+      type: 'article',
+      url: '/paddock-maintenance',
+      images: ogImage ? [{ url: ogImage }] : undefined,
+    },
+  };
+}
+
+// ISR so Payload content/media changes flow through without a full redeploy.
+export const revalidate = 3600;
 
 // Hero photo — same default as the gallery uses; prefer a Burcombe Estate shot.
 const HERO_MEDIA_ID = 39;

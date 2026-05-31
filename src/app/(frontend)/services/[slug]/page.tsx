@@ -237,10 +237,11 @@ export default async function ServicePage({ params }: { params: Promise<Params> 
       <CtaBlock />
       <Footer />
       <StickyQuoteCta serviceSlug={svc.slug} serviceTitle={svc.title} />
-      <Script
-        id="ld-service"
+      {/* Server-rendered JSON-LD so crawlers see it in the initial HTML
+          (a plain <script>, not next/script which injects client-side). */}
+      <script
         type="application/ld+json"
-        strategy="afterInteractive"
+        // eslint-disable-next-line react/no-danger
         dangerouslySetInnerHTML={{ __html: jsonLd(serviceSchema) }}
       />
     </>

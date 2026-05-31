@@ -11,3 +11,12 @@ export const SITE_PHONE_TEL = '+447825156062';
 
 /** Receiving address for enquiries. */
 export const SITE_EMAIL = 'tom@hampshirepaddockmanagement.com';
+
+/**
+ * Public profile URLs for schema.org `sameAs` (Google Business Profile,
+ * social pages). These tie the website to the business's other web presences
+ * and are a strong local-SEO signal — add the GBP "share" URL and any social
+ * profiles here. Left empty until the real URLs are supplied; the JSON-LD
+ * omits `sameAs` entirely when this is empty.
+ */
+export const SITE_SOCIAL_LINKS: string[] = [];

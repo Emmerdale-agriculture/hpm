@@ -103,6 +103,14 @@ const nextConfig = {
   async headers() {
     return [
       {
+        // Next's content-hashed build assets are immutable — cache them hard
+        // at the browser/CDN so repeat visits don't re-fetch JS/CSS chunks.
+        source: '/_next/static/(.*)',
+        headers: [
+          { key: 'Cache-Control', value: 'public, max-age=31536000, immutable' },
+        ],
+      },
+      {
         source: '/(.*)',
         headers: [
           // Don't allow this site to be iframed except by itself

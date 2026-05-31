@@ -7,9 +7,10 @@ import { Footer } from '@/components/Footer';
 import styles from './privacy.module.css';
 
 export const metadata: Metadata = {
-  title: 'Privacy Policy',
+  title: 'Privacy Policy — Hampshire Paddock Management',
   description:
     'How Hampshire Paddock Management (Emmerdale Agriculture Ltd) handles personal information under UK GDPR.',
+  alternates: { canonical: '/privacy' },
   robots: { index: true, follow: true },
 };
 

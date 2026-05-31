@@ -1,6 +1,7 @@
 import type { Metadata } from 'next';
 import Image from 'next/image';
 import Link from 'next/link';
+import { unstable_cache } from 'next/cache';
 import { getPayload } from 'payload';
 import config from '@payload-config';
 
@@ -17,6 +18,7 @@ export const metadata: Metadata = {
   title: 'Services — Hampshire Paddock Management',
   description:
     'Cutting, ground care, and treatment & upkeep services for paddocks and smallholdings across Hampshire, Wiltshire, Berkshire, Surrey, Dorset and East Sussex.',
+  alternates: { canonical: '/services' },
 };
 
 export const revalidate = 3600;
@@ -34,33 +36,45 @@ type ServiceDoc = {
 // John Deere 6250R — flagship tractor photo used as the /services hero.
 const SERVICES_HERO_MEDIA_ID = 174;
 
-export default async function ServicesIndexPage() {
-  const payload = await getPayload({ config });
-  const res = await payload.find({
-    collection: 'services',
-    sort: 'orderInMenu',
-    limit: 100,
-    depth: 1,
-    where: { category: { exists: true } },
-  });
-
-  let heroMedia: Parameters<typeof mediaUrl>[0] = null;
-  try {
-    heroMedia = await payload.findByID({
-      collection: 'media',
-      id: SERVICES_HERO_MEDIA_ID,
-      depth: 0,
+// Cache the service list + hero lookup so we don't re-query Payload on every
+// request (the homepage does the same). Revalidated via the 'services'/'media'
+// tags when content changes in Payload.
+const getServicesPageData = unstable_cache(
+  async () => {
+    const payload = await getPayload({ config });
+    const res = await payload.find({
+      collection: 'services',
+      sort: 'orderInMenu',
+      limit: 100,
+      depth: 1,
+      where: { category: { exists: true } },
     });
-  } catch {
-    heroMedia = null;
-  }
+
+    let heroMedia: Parameters<typeof mediaUrl>[0] = null;
+    try {
+      heroMedia = await payload.findByID({
+        collection: 'media',
+        id: SERVICES_HERO_MEDIA_ID,
+        depth: 0,
+      });
+    } catch {
+      heroMedia = null;
+    }
+    return { docs: res.docs as unknown as ServiceDoc[], heroMedia };
+  },
+  ['services-index-data'],
+  { revalidate: 300, tags: ['services', 'media'] },
+);
+
+export default async function ServicesIndexPage() {
+  const { docs, heroMedia } = await getServicesPageData();
   const heroUrl = mediaUrl(heroMedia, 'large') ?? mediaUrl(heroMedia);
   const heroAlt =
     (typeof heroMedia === 'object' && heroMedia?.alt) ||
     'John Deere 6250R — Hampshire Paddock Management';
 
   const byCategory: Record<string, ServiceDoc[]> = {};
-  for (const doc of res.docs as unknown as ServiceDoc[]) {
+  for (const doc of docs) {
     if (!doc.category) continue;
     (byCategory[doc.category] ??= []).push(doc);
   }

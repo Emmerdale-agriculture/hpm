@@ -58,7 +58,10 @@ const getPricingPageData = unstable_cache(
 );
 
 export async function generateMetadata(): Promise<Metadata> {
-  const { data } = await getPricingPageData();
+  const { data, heroMedia } = await getPricingPageData();
+  // Use the pricing hero as the social preview image instead of the generic
+  // site default.
+  const ogImage = mediaUrl(heroMedia, 'large') ?? mediaUrl(heroMedia);
   return {
     title: data.metaTitle,
     description: data.metaDescription,
@@ -68,6 +71,7 @@ export async function generateMetadata(): Promise<Metadata> {
       description: data.metaDescription,
       type: 'website',
       url: '/pricing',
+      images: ogImage ? [{ url: ogImage }] : undefined,
     },
   };
 }

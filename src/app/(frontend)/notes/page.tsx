@@ -18,7 +18,12 @@ export const metadata: Metadata = {
   title: 'Notes from the field — Hampshire Paddock Management',
   description:
     'Practical advice on paddocks, weeds, kit, and seasonal jobs — written from the seat of a tractor.',
+  alternates: { canonical: '/notes' },
 };
+
+// ISR so newly published posts (revalidateTag('posts')) appear without a full
+// redeploy. Without this the page was fully static after build.
+export const revalidate = 3600;
 
 // Tag chip set for the index filter. Order is the display order.
 const TAG_OPTIONS: Array<{ slug: string; label: string }> = [
