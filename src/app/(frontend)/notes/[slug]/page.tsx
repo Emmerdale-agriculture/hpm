@@ -279,7 +279,7 @@ export default async function NotePostPage({
 
   const breadcrumbHref = primaryTag ? `/notes?tag=${primaryTag}` : '/notes';
   const breadcrumbLabel = primaryTag
-    ? primaryTag.replace(/-/g, ' ').replace(/^\w/, (c) => c.toUpperCase())
+    ? primaryTag.replace(/-/g, ' ').replace(/^\w/, (c: string) => c.toUpperCase())
     : 'Notes from the field';
 
   return (
