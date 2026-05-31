@@ -1,4 +1,6 @@
 import { Resend } from 'resend';
+import { getPayload } from 'payload';
+import config from '@payload-config';
 import { SITE_EMAIL } from '@/lib/site';
 
 /**
@@ -18,6 +20,10 @@ import { SITE_EMAIL } from '@/lib/site';
 const RATE_LIMIT_PER_HOUR = 10;
 const HOUR_MS = 60 * 60 * 1000;
 
+// Cap on distinct IPs tracked at once; prevents the Map from growing
+// unbounded on a long-lived instance (slow memory leak otherwise).
+const MAX_BUCKETS = 10_000;
+
 type Bucket = { count: number; resetAt: number };
 const buckets = new Map<string, Bucket>();
 
@@ -25,6 +31,13 @@ function rateLimited(ip: string): boolean {
   const now = Date.now();
   const b = buckets.get(ip);
   if (!b || b.resetAt < now) {
+    // Opportunistically prune expired entries when the Map gets large so
+    // it can't grow without bound across many unique IPs.
+    if (buckets.size >= MAX_BUCKETS) {
+      for (const [key, bucket] of buckets) {
+        if (bucket.resetAt < now) buckets.delete(key);
+      }
+    }
     buckets.set(ip, { count: 1, resetAt: now + HOUR_MS });
     return false;
   }
@@ -102,6 +115,32 @@ export async function POST(req: Request) {
   }
   if (message.length > 5000) {
     return Response.json({ error: 'Message too long' }, { status: 400 });
+  }
+
+  // Persist the lead first so nothing is lost if the email send fails.
+  // Non-fatal: a DB hiccup should not block the (more important) email.
+  try {
+    const payload = await getPayload({ config });
+    await payload.create({
+      collection: 'enquiries',
+      data: {
+        name,
+        // Enquiries.email is required; fall back to a syntactically valid
+        // `.invalid` placeholder when the enquirer left it blank.
+        email: email || `no-email-${Date.now()}@placeholder.invalid`,
+        phone,
+        location,
+        message: service ? `[Service: ${service}]\n\n${message || '(none)'}` : message || '(none)',
+        status: 'new',
+        meta: {
+          ip,
+          userAgent: req.headers.get('user-agent') ?? undefined,
+          referer: req.headers.get('referer') ?? undefined,
+        },
+      },
+    });
+  } catch (err) {
+    console.warn('[contact] payload persist failed:', (err as Error).message);
   }
 
   const apiKey = process.env.RESEND_API_KEY;

@@ -104,6 +104,14 @@ export async function callJson<T>(args: {
       return JSON.parse(cleaned) as T;
     } catch (err) {
       lastErr = err;
+      // Don't retry on a timeout/abort — a second 90s attempt could burn
+      // ~180s of the 300s function budget for one draft. Fail fast instead.
+      const isTimeout =
+        err instanceof Error &&
+        (err.name === 'AbortError' ||
+          err.name === 'APIConnectionTimeoutError' ||
+          /timed? ?out/i.test(err.message));
+      if (isTimeout) break;
       if (attempt === 0) await new Promise((r) => setTimeout(r, 800));
     }
   }

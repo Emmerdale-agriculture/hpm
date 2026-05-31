@@ -116,6 +116,16 @@ const nextConfig = {
             key: 'Permissions-Policy',
             value: 'camera=(), microphone=(), geolocation=(), interest-cohort=()',
           },
+          // Conservative CSP: hardens clickjacking (frame-ancestors, alongside
+          // X-Frame-Options), blocks <object>/<embed> plugins, and pins the
+          // <base> URI. A strict script-src is intentionally omitted — Next's
+          // inline bootstrap/hydration scripts would need nonce wiring first;
+          // that's a worthwhile follow-up. Inline JSON-LD is a data block and
+          // is unaffected by these directives.
+          {
+            key: 'Content-Security-Policy',
+            value: "frame-ancestors 'self'; object-src 'none'; base-uri 'self'",
+          },
         ],
       },
     ];

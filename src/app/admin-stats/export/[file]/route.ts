@@ -199,9 +199,9 @@ export async function GET(
 
     return NextResponse.json({ error: 'unknown export' }, { status: 404 });
   } catch (err) {
-    return NextResponse.json(
-      { error: err instanceof Error ? err.message : 'export failed' },
-      { status: 502 },
-    );
+    // Log the real error server-side; don't echo upstream text (which can
+    // include the site URL, token/quota details, etc.) back to the client.
+    console.error('[admin-stats/export] failed:', err);
+    return NextResponse.json({ error: 'export failed' }, { status: 502 });
   }
 }

@@ -1,3 +1,4 @@
+import { cache } from 'react';
 import type { Metadata } from 'next';
 import { notFound } from 'next/navigation';
 import Script from 'next/script';
@@ -68,7 +69,9 @@ export async function generateMetadata({
   };
 }
 
-async function findService(slug: string) {
+// Wrapped in React cache() so generateMetadata and the page render share a
+// single DB query per request instead of fetching this (depth:2) doc twice.
+const findService = cache(async (slug: string) => {
   const payload = await getPayload({ config });
   const res = await payload.find({
     collection: 'services',
@@ -77,6 +80,17 @@ async function findService(slug: string) {
     depth: 2, // hydrate heroImage + relatedServices + related hero images
   });
   return res.docs[0] ?? null;
+});
+
+export async function generateStaticParams() {
+  const payload = await getPayload({ config });
+  const res = await payload.find({
+    collection: 'services',
+    limit: 200,
+    depth: 0,
+    select: { slug: true },
+  });
+  return res.docs.map((d) => ({ slug: String(d.slug) }));
 }
 
 export default async function ServicePage({ params }: { params: Promise<Params> }) {

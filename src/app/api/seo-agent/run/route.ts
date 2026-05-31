@@ -25,22 +25,27 @@ export async function POST(req: Request) {
   const dryRun = url.searchParams.get('dryRun') === '1';
   const sendEmail = url.searchParams.get('sendEmail') === '1' || !dryRun;
 
-  const summary = await runAgent({ dryRun });
+  try {
+    const summary = await runAgent({ dryRun });
 
-  const to = process.env.DIGEST_TO_EMAIL;
-  const siteUrl = process.env.NEXT_PUBLIC_SITE_URL ?? 'https://hampshirepaddockmanagement.com';
-  if (sendEmail && to) {
-    const result = await sendDigest({ summary, to, siteUrl });
-    if (!result.ok) summary.errors.push(`Digest send failed: ${result.error}`);
+    const to = process.env.DIGEST_TO_EMAIL;
+    const siteUrl = process.env.NEXT_PUBLIC_SITE_URL ?? 'https://hampshirepaddockmanagement.com';
+    if (sendEmail && to) {
+      const result = await sendDigest({ summary, to, siteUrl });
+      if (!result.ok) summary.errors.push(`Digest send failed: ${result.error}`);
+    }
+
+    return NextResponse.json({
+      ok: true,
+      dryRun,
+      runId: summary.runId,
+      week: summary.weekIdentified,
+      counts: summary.counts,
+      errors: summary.errors,
+      opportunities: dryRun ? summary.opportunities : undefined,
+    });
+  } catch (err) {
+    console.error('[seo-agent] manual run failed:', err);
+    return NextResponse.json({ ok: false, error: 'internal error' }, { status: 500 });
   }
-
-  return NextResponse.json({
-    ok: true,
-    dryRun,
-    runId: summary.runId,
-    week: summary.weekIdentified,
-    counts: summary.counts,
-    errors: summary.errors,
-    opportunities: dryRun ? summary.opportunities : undefined,
-  });
 }

@@ -22,25 +22,32 @@ export async function GET(req: Request) {
   const unauth = checkCronAuth(req);
   if (unauth) return unauth;
 
-  const summary = await runAgent({ dryRun: false });
+  try {
+    const summary = await runAgent({ dryRun: false });
 
-  // Always send the digest — even quiet weeks. Brief §9.
-  const to = process.env.DIGEST_TO_EMAIL;
-  const siteUrl = process.env.NEXT_PUBLIC_SITE_URL ?? 'https://hampshirepaddockmanagement.com';
-  if (to) {
-    const result = await sendDigest({ summary, to, siteUrl });
-    if (!result.ok) {
-      summary.errors.push(`Digest send failed: ${result.error}`);
+    // Always send the digest — even quiet weeks. Brief §9.
+    const to = process.env.DIGEST_TO_EMAIL;
+    const siteUrl = process.env.NEXT_PUBLIC_SITE_URL ?? 'https://hampshirepaddockmanagement.com';
+    if (to) {
+      const result = await sendDigest({ summary, to, siteUrl });
+      if (!result.ok) {
+        summary.errors.push(`Digest send failed: ${result.error}`);
+      }
+    } else {
+      summary.errors.push('DIGEST_TO_EMAIL not set — digest skipped');
     }
-  } else {
-    summary.errors.push('DIGEST_TO_EMAIL not set — digest skipped');
-  }
 
-  return NextResponse.json({
-    ok: true,
-    runId: summary.runId,
-    week: summary.weekIdentified,
-    counts: summary.counts,
-    errors: summary.errors,
-  });
+    return NextResponse.json({
+      ok: true,
+      runId: summary.runId,
+      week: summary.weekIdentified,
+      counts: summary.counts,
+      errors: summary.errors,
+    });
+  } catch (err) {
+    // Never let an unexpected throw leak a stack trace to the caller, and
+    // make the cron failure visible in logs rather than a silent 500.
+    console.error('[seo-agent] run failed:', err);
+    return NextResponse.json({ ok: false, error: 'internal error' }, { status: 500 });
+  }
 }

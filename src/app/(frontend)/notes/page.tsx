@@ -79,37 +79,41 @@ const getNotesData = unstable_cache(
   async () => {
     const payload = await getPayload({ config });
 
-    const [featuredRes, postsRes, heroMedia] = await Promise.all([
-      payload.find({
-        collection: 'posts',
-        where: {
-          and: [
-            { featured: { equals: true } },
-            { _status: { equals: 'published' } },
-          ],
-        },
-        limit: 1,
-        sort: '-publishedAt',
-        depth: 1,
-      }),
+    const [postsRes, heroMedia] = await Promise.all([
       payload.find({
         collection: 'posts',
         where: { _status: { equals: 'published' } },
         limit: 0,
         sort: '-publishedAt',
         depth: 1,
+        // Card fields only — exclude the heavy `content` blocks for every
+        // published post. heroImage still hydrates at depth:1.
+        select: {
+          slug: true,
+          title: true,
+          excerpt: true,
+          publishedAt: true,
+          primaryTag: true,
+          featured: true,
+          tags: true,
+          heroImage: true,
+        },
       }),
       payload
         .findByID({ collection: 'media', id: NOTES_HERO_MEDIA_ID, depth: 0 })
         .catch(() => null),
     ]);
 
-    const all = (postsRes.docs as RawPost[]).map(project);
+    const rawDocs = postsRes.docs as RawPost[];
+    const all = rawDocs.map(project);
 
-    // Featured: explicit flag wins; fall back to most recent.
+    // Featured: explicit flag wins (results are sorted newest-first, so the
+    // first flagged post is the most recent), else fall back to most recent.
+    // Derived in-memory from the single query above — no extra round-trip.
     let featured: NoteCard | null = null;
-    if (featuredRes.docs.length > 0) {
-      featured = project(featuredRes.docs[0] as RawPost);
+    const featuredRaw = rawDocs.find((p) => p.featured === true);
+    if (featuredRaw) {
+      featured = project(featuredRaw);
     } else if (all.length > 0) {
       featured = all[0];
     }

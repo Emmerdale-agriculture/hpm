@@ -6,6 +6,7 @@ import { lexicalEditor } from '@payloadcms/richtext-lexical';
 import { s3Storage } from '@payloadcms/storage-s3';
 import { fileURLToPath } from 'url';
 
+import { env } from '../lib/env';
 import { Users } from './collections/users';
 import { Pages } from './collections/pages';
 import { Posts } from './collections/posts';
@@ -74,7 +75,7 @@ export default buildConfig({
 
   db: postgresAdapter({
     pool: {
-      connectionString: process.env.DATABASE_URL,
+      connectionString: env.DATABASE_URL,
     },
   }),
 
@@ -99,7 +100,7 @@ export default buildConfig({
     }),
   ],
 
-  secret: process.env.PAYLOAD_SECRET || '',
+  secret: env.PAYLOAD_SECRET,
 
   typescript: {
     outputFile: path.resolve(dirname, '../../payload-types.ts'),

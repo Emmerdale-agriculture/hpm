@@ -2,6 +2,7 @@ import Image from 'next/image';
 import { Nav } from './Nav';
 import { Breadcrumb } from './Breadcrumb';
 import { mediaUrl } from '@/lib/media';
+import { sanitizeInline } from '@/lib/sanitize';
 import styles from './ServiceHero.module.css';
 
 type HeroMedia = Parameters<typeof mediaUrl>[0];
@@ -49,8 +50,8 @@ export function ServiceHero({ title, strapline, heroImage }: Props) {
         {strapline && (
           <p
             className={styles.strapline}
-            /* The strapline may include <em> emphasis as authored in admin */
-            dangerouslySetInnerHTML={{ __html: strapline }}
+            /* Admin-authored; only inline emphasis (<em> etc.) is allowed. */
+            dangerouslySetInnerHTML={{ __html: sanitizeInline(strapline) }}
           />
         )}
       </div>

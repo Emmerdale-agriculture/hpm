@@ -44,6 +44,14 @@ export const Enquiries: CollectionConfig = {
     {
       name: 'status',
       type: 'select',
+      // Public form submissions (via overrideAccess:false on the REST
+      // endpoint) must not be able to set status/internalNotes/meta. Trusted
+      // server-side writes use the Local API (overrideAccess:true) and bypass
+      // this, so the contact route and quote action can still stamp them.
+      access: {
+        create: ({ req: { user } }) => Boolean(user),
+        update: ({ req: { user } }) => Boolean(user),
+      },
       defaultValue: 'new',
       options: [
         { label: 'New', value: 'new' },
@@ -58,12 +66,20 @@ export const Enquiries: CollectionConfig = {
     {
       name: 'internalNotes',
       type: 'textarea',
+      access: {
+        create: ({ req: { user } }) => Boolean(user),
+        update: ({ req: { user } }) => Boolean(user),
+      },
       admin: { description: 'Private notes, never shown publicly.' },
     },
     // Honeypot-adjacent metadata for spam filtering
     {
       name: 'meta',
       type: 'group',
+      access: {
+        create: ({ req: { user } }) => Boolean(user),
+        update: ({ req: { user } }) => Boolean(user),
+      },
       admin: { position: 'sidebar', description: 'Submission metadata.' },
       fields: [
         { name: 'ip', type: 'text' },

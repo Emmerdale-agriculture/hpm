@@ -1,4 +1,5 @@
 import type { ReactNode } from 'react';
+import { sanitizeInline } from '@/lib/sanitize';
 import styles from './ServiceBody.module.css';
 
 type Props = {
@@ -22,8 +23,8 @@ export function ServiceBody({ lede, body, aside }: Props) {
         {lede && (
           <p
             className={styles.lede}
-            /* Admin-authored; supports <em> fragments. */
-            dangerouslySetInnerHTML={{ __html: lede }}
+            /* Admin-authored; only inline emphasis (<em> etc.) is allowed. */
+            dangerouslySetInnerHTML={{ __html: sanitizeInline(lede) }}
           />
         )}
         <div className={styles.body}>{body}</div>
