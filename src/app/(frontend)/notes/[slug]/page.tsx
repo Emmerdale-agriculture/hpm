@@ -1,3 +1,4 @@
+import { cache } from 'react';
 import type { Metadata } from 'next';
 import Image from 'next/image';
 import Link from 'next/link';
@@ -19,7 +20,9 @@ type Params = { slug: string };
 
 export const revalidate = 3600;
 
-async function getPostBySlug(slug: string) {
+// Wrapped in React cache() so generateMetadata and the page render share a
+// single DB query per request instead of fetching the post twice.
+const getPostBySlug = cache(async (slug: string) => {
   const payload = await getPayload({ config });
   const res = await payload.find({
     collection: 'posts',
@@ -33,6 +36,18 @@ async function getPostBySlug(slug: string) {
     depth: 1,
   });
   return res.docs[0] ?? null;
+});
+
+export async function generateStaticParams() {
+  const payload = await getPayload({ config });
+  const res = await payload.find({
+    collection: 'posts',
+    where: { _status: { equals: 'published' } },
+    limit: 500,
+    depth: 0,
+    select: { slug: true },
+  });
+  return res.docs.map((d) => ({ slug: String(d.slug) }));
 }
 
 export async function generateMetadata({
@@ -204,6 +219,10 @@ export default async function NotePostPage({
     sort: '-publishedAt',
     limit: 100,
     depth: 1,
+    // Only the card fields are needed for ranking/rendering — exclude the
+    // heavy `content` blocks across all 100 candidate rows. heroImage still
+    // hydrates at depth:1.
+    select: { slug: true, title: true, primaryTag: true, publishedAt: true, tags: true, heroImage: true },
   });
 
   const tagSet = new Set(tagSlugs);

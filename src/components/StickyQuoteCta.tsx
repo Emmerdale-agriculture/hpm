@@ -24,9 +24,15 @@ export function StickyQuoteCta({ serviceSlug, serviceTitle }: Props) {
       setVisible(true);
       return;
     }
+    // Measure the hero once; the threshold doesn't change as you scroll.
+    const threshold = hero.getBoundingClientRect().height * 0.8;
     const onScroll = () => {
-      const threshold = hero.getBoundingClientRect().height * 0.8;
-      if (window.scrollY > threshold) setVisible(true);
+      if (window.scrollY > threshold) {
+        setVisible(true);
+        // Once revealed there's nothing left to watch — stop listening so we
+        // aren't running a handler on every scroll tick for the whole page.
+        window.removeEventListener('scroll', onScroll);
+      }
     };
     onScroll();
     window.addEventListener('scroll', onScroll, { passive: true });

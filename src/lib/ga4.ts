@@ -56,6 +56,9 @@ export async function runGa4Report(args: Ga4ReportArgs): Promise<Ga4Row[]> {
       'Content-Type': 'application/json',
     },
     body: JSON.stringify(body),
+    // Bound the call so a stalled GA4 upstream can't hang the request
+    // (matches the timeouts used on every GSC call).
+    signal: AbortSignal.timeout(30_000),
   });
   if (!res.ok) {
     throw new Error(`GA4 report failed: ${res.status} ${await res.text()}`);

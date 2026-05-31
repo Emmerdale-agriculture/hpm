@@ -22,12 +22,16 @@ export function HomepageGallery({ images }: Props) {
 
       <div className={styles.grid}>
         {images.map((media, i) => {
-          const url = mediaUrl(media, 'card');
+          const url = mediaUrl(media, 'card') ?? mediaUrl(media);
           const alt =
             (typeof media === 'object' && media?.alt) ||
             'Hampshire Paddock Management at work';
+          const key =
+            (typeof media === 'object' && media && 'id' in media
+              ? (media as { id?: string | number }).id
+              : undefined) ?? i;
           return (
-            <div key={i} className={styles.tile}>
+            <div key={key} className={styles.tile}>
               {url && (
                 <Image
                   src={url}

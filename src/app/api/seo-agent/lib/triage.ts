@@ -46,8 +46,10 @@ export function triageRow(row: GscRowPlus): TriageVerdict {
     };
   }
 
-  // New article: weak/no ranking with demand
-  if (position >= 20 && impressions >= 30) {
+  // New article: weak/no ranking with demand. Bands are disjoint with the
+  // on_page_tweak branch above (which claims position ≤ 20), so position 20
+  // is a tweak and anything beyond it is a new-article candidate.
+  if (position > 20 && impressions >= 30) {
     return {
       candidate: true,
       suggestedType: 'new_article',
