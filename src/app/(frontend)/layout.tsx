@@ -53,6 +53,17 @@ export const metadata: Metadata = {
   twitter: {
     card: 'summary_large_image',
   },
+  // Favicons live in /public. Declaring them here means browsers use these
+  // and don't fall back to probing /favicon.ico. SVG for modern browsers,
+  // PNG + .ico fallbacks for the rest, apple-icon for iOS home screens.
+  icons: {
+    icon: [
+      { url: '/favicon.svg', type: 'image/svg+xml' },
+      { url: '/icon.png', type: 'image/png', sizes: '512x512' },
+    ],
+    shortcut: '/favicon.ico',
+    apple: '/apple-icon.png',
+  },
   robots: {
     index: true,
     follow: true,

@@ -15,7 +15,8 @@ import { SERVICE_CATEGORIES } from '@/lib/services';
 import styles from './services.module.css';
 
 export const metadata: Metadata = {
-  title: 'Services — Hampshire Paddock Management',
+  // Bare title — the layout template appends " | Hampshire Paddock Management".
+  title: 'Services',
   description:
     'Cutting, ground care, and treatment & upkeep services for paddocks and smallholdings across Hampshire, Wiltshire, Berkshire, Surrey, Dorset and East Sussex.',
   alternates: { canonical: '/services' },

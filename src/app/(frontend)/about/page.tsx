@@ -13,7 +13,8 @@ import { AREA, CREDENTIALS, CTA, HERO, INTRO, PHOTOS, STORY } from './content';
 import styles from './about.module.css';
 
 export const metadata: Metadata = {
-  title: 'About — Hampshire Paddock Management',
+  // Bare title — the layout template appends " | Hampshire Paddock Management".
+  title: 'About',
   description:
     "Tom runs Hampshire Paddock Management — modern compact equipment, full-time paddock work across Hampshire, Wiltshire, Berkshire, Surrey, Dorset and West Sussex.",
   alternates: { canonical: '/about' },

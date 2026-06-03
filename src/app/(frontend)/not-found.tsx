@@ -14,7 +14,9 @@ import styles from './not-found.module.css';
 // The (frontend)/layout.tsx provides the html/body chrome.
 
 export const metadata = {
-  title: '404 — Hampshire Paddock Management',
+  // `absolute` bypasses the layout's "%s | Hampshire Paddock Management"
+  // template — the brand is already in this string.
+  title: { absolute: '404 — Hampshire Paddock Management' },
   robots: { index: false, follow: true },
 };
 

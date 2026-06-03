@@ -20,6 +20,7 @@ export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
     { url: `${SITE_URL}/`,         lastModified: now, changeFrequency: 'monthly', priority: 1.0 },
     { url: `${SITE_URL}/services`, lastModified: now, changeFrequency: 'monthly', priority: 0.9 },
     { url: `${SITE_URL}/paddock-maintenance`, lastModified: now, changeFrequency: 'monthly', priority: 0.9 },
+    { url: `${SITE_URL}/pricing`,  lastModified: now, changeFrequency: 'monthly', priority: 0.8 },
     { url: `${SITE_URL}/gallery`,  lastModified: now, changeFrequency: 'monthly', priority: 0.8 },
     { url: `${SITE_URL}/notes`,    lastModified: now, changeFrequency: 'weekly',  priority: 0.8 },
     { url: `${SITE_URL}/about`,    lastModified: now, changeFrequency: 'yearly',  priority: 0.6 },

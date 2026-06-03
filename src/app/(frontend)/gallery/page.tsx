@@ -12,7 +12,8 @@ import { mediaUrl } from '@/lib/media';
 import styles from './gallery.module.css';
 
 export const metadata: Metadata = {
-  title: 'Gallery — Hampshire Paddock Management',
+  // Bare title — the layout template appends " | Hampshire Paddock Management".
+  title: 'Gallery',
   description:
     'Photos of the Hampshire Paddock Management fleet and paddock work across Hampshire, Wiltshire, Berkshire, Surrey, Dorset and East Sussex.',
   alternates: { canonical: '/gallery' },

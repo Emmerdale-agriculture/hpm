@@ -14,9 +14,12 @@ import { ContactForm } from './ContactForm';
 import styles from './contact.module.css';
 
 export const metadata: Metadata = {
-  title: 'Get a quote — Hampshire Paddock Management',
+  // Bare title — the layout template appends " | Hampshire Paddock Management".
+  title: 'Get a quote',
   description:
     'Tell me about your paddock — usually replies within hours, day or night. Hampshire and surrounding counties.',
+  // canonical '/contact' also resolves the /quote rewrite (next.config) so the
+  // two URLs don't compete as duplicate content.
   alternates: { canonical: '/contact' },
 };
 

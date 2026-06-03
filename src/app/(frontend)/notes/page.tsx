@@ -15,9 +15,12 @@ import type { NoteCard } from './types';
 import styles from './notes.module.css';
 
 export const metadata: Metadata = {
-  title: 'Notes from the field — Hampshire Paddock Management',
+  // Bare title — the layout template appends " | Hampshire Paddock Management".
+  title: 'Notes from the field',
   description:
     'Practical advice on paddocks, weeds, kit, and seasonal jobs — written from the seat of a tractor.',
+  // canonical '/notes' also folds the crawlable /notes?tag=<slug> breadcrumb
+  // variants (same server HTML) back to the index.
   alternates: { canonical: '/notes' },
 };
 

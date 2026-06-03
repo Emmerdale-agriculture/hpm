@@ -18,7 +18,10 @@ export const metadata: Metadata = {
   // GSC audit (2026-04-26) showed "paddock maintenance" at 303 imp,
   // pos 19.8 (page 2). Leading the homepage title with the exact
   // phrase to nudge it onto page 1.
-  title: 'Paddock Maintenance Hampshire — Hampshire Paddock Management',
+  // `absolute` bypasses the layout's "%s | Hampshire Paddock Management"
+  // template — the brand is already in this string, so a plain string
+  // title would get the brand appended a second time.
+  title: { absolute: 'Paddock Maintenance Hampshire — Hampshire Paddock Management' },
   description:
     'Professional paddock maintenance across Hampshire, Wiltshire, Berkshire, Surrey, Dorset and East Sussex. Topping, harrowing, rolling, drainage, fertiliser — compact machinery on grass tyres, no ruts. The person you call is the person on the tractor.',
   alternates: { canonical: '/' },
