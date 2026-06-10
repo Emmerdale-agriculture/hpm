@@ -16,7 +16,7 @@ export const metadata: Metadata = {
   // Bare title — the layout template appends " | Hampshire Paddock Management".
   title: 'About',
   description:
-    "Tom runs Hampshire Paddock Management — modern compact equipment, full-time paddock work across Hampshire, Wiltshire, Berkshire, Surrey, Dorset and West Sussex.",
+    "Tom runs Hampshire Paddock Management — modern compact equipment, full-time paddock work across Hampshire, Wiltshire, Berkshire, Surrey, Dorset and Sussex.",
   alternates: { canonical: '/about' },
 };
 

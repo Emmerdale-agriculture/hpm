@@ -168,7 +168,7 @@ export default async function ContactPage() {
             <div className={styles.panelEyebrow}>Where I work</div>
             <h4 className={styles.panelTitle}>Hampshire and surrounding counties</h4>
             <p>
-              Most jobs across Hampshire, Wiltshire, West Sussex, Surrey, Berkshire
+              Most jobs across Hampshire, Wiltshire, Sussex, Surrey, Berkshire
               and Dorset. Further afield by arrangement — ask.
             </p>
           </div>

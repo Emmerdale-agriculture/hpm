@@ -194,7 +194,7 @@ export default async function ServicePage({ params }: { params: Promise<Params> 
       { '@type': 'AdministrativeArea', name: 'Berkshire' },
       { '@type': 'AdministrativeArea', name: 'Surrey' },
       { '@type': 'AdministrativeArea', name: 'Dorset' },
-      { '@type': 'AdministrativeArea', name: 'East Sussex' },
+      { '@type': 'AdministrativeArea', name: 'Sussex' },
     ],
   };
 

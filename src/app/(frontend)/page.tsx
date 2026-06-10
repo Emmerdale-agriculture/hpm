@@ -23,7 +23,7 @@ export const metadata: Metadata = {
   // title would get the brand appended a second time.
   title: { absolute: 'Paddock Maintenance Hampshire — Hampshire Paddock Management' },
   description:
-    'Professional paddock maintenance across Hampshire, Wiltshire, Berkshire, Surrey, Dorset and East Sussex. Topping, harrowing, rolling, drainage, fertiliser — compact machinery on grass tyres, no ruts. The person you call is the person on the tractor.',
+    'Professional paddock maintenance across Hampshire, Wiltshire, Berkshire, Surrey, Dorset and Sussex. Topping, harrowing, rolling, drainage, fertiliser — compact machinery on grass tyres, no ruts. The person you call is the person on the tractor.',
   alternates: { canonical: '/' },
 };
 

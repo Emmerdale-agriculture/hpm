@@ -234,7 +234,7 @@ export const PricingPage: GlobalConfig = {
                 },
                 {
                   title: 'Travel distance',
-                  body: '£69/hr + VAT from our Hampshire base. We cover Hampshire, Wiltshire, Berkshire, East Sussex, Dorset and Surrey.',
+                  body: '£69/hr + VAT from our Hampshire base. We cover Hampshire, Wiltshire, Berkshire, Sussex, Dorset and Surrey.',
                 },
                 {
                   title: 'Terrain',
@@ -364,7 +364,7 @@ export const PricingPage: GlobalConfig = {
               type: 'textarea',
               required: true,
               defaultValue:
-                'Transparent paddock and field management pricing across Hampshire, Wiltshire, Berkshire, Dorset, Surrey and East Sussex. Hourly, per-acre, day-rate and programme pricing.',
+                'Transparent paddock and field management pricing across Hampshire, Wiltshire, Berkshire, Dorset, Surrey and Sussex. Hourly, per-acre, day-rate and programme pricing.',
             },
           ],
         },

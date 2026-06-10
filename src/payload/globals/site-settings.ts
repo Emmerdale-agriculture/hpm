@@ -48,7 +48,7 @@ export const SiteSettings: GlobalConfig = {
             { name: 'Berkshire' },
             { name: 'Surrey' },
             { name: 'Dorset' },
-            { name: 'East Sussex' },
+            { name: 'Sussex' },
           ],
         },
       ],

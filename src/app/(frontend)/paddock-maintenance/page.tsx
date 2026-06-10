@@ -185,7 +185,7 @@ const FAQS: FaqItem[] = [
   },
   {
     q: 'Where do you work? Are you near me?',
-    a: 'Hampshire mainly — Winchester, Andover, Basingstoke, Petersfield, Romsey, Stockbridge, Alresford, the Test Valley, the Meon Valley, and the New Forest fringe are all regular runs. Beyond Hampshire there\'s steady work in Wiltshire (Salisbury, Marlborough), Berkshire (Newbury, Hungerford), Surrey, Dorset, and West Sussex. Anywhere further afield is by arrangement — ask, and we\'ll work out whether it makes sense.',
+    a: 'Hampshire mainly — Winchester, Andover, Basingstoke, Petersfield, Romsey, Stockbridge, Alresford, the Test Valley, the Meon Valley, and the New Forest fringe are all regular runs. Beyond Hampshire there\'s steady work in Wiltshire (Salisbury, Marlborough), Berkshire (Newbury, Hungerford), Surrey, Dorset, and Sussex. Anywhere further afield is by arrangement — ask, and we\'ll work out whether it makes sense.',
   },
 ];
 
@@ -228,7 +228,7 @@ export default async function PaddockMaintenancePage() {
       { '@type': 'AdministrativeArea', name: 'Berkshire' },
       { '@type': 'AdministrativeArea', name: 'Surrey' },
       { '@type': 'AdministrativeArea', name: 'Dorset' },
-      { '@type': 'AdministrativeArea', name: 'West Sussex' },
+      { '@type': 'AdministrativeArea', name: 'Sussex' },
     ],
   };
 
@@ -303,7 +303,7 @@ export default async function PaddockMaintenancePage() {
         <p>
           Based in Hampshire, with regular routes through Winchester, Andover, Basingstoke,
           Petersfield, Romsey, Stockbridge, and Alresford, plus into Wiltshire, Berkshire,
-          Surrey, Dorset, and West Sussex — if you&apos;re searching for paddock maintenance
+          Surrey, Dorset, and Sussex — if you&apos;re searching for paddock maintenance
           near you in any of these areas, you&apos;re in the catchment.
         </p>
       </section>

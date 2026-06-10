@@ -43,7 +43,7 @@ export const metadata: Metadata = {
     template: '%s | Hampshire Paddock Management',
   },
   description:
-    'Professional paddock maintenance across Hampshire, Wiltshire, Berkshire, Surrey, Dorset and East Sussex. Topping, harrowing, rolling, drainage, fertiliser — compact machinery on grass tyres, no ruts.',
+    'Professional paddock maintenance across Hampshire, Wiltshire, Berkshire, Surrey, Dorset and Sussex. Topping, harrowing, rolling, drainage, fertiliser — compact machinery on grass tyres, no ruts.',
   openGraph: {
     type: 'website',
     locale: 'en_GB',
@@ -148,8 +148,7 @@ export default function RootLayout({
       { '@type': 'AdministrativeArea', name: 'Berkshire' },
       { '@type': 'AdministrativeArea', name: 'Surrey' },
       { '@type': 'AdministrativeArea', name: 'Dorset' },
-      { '@type': 'AdministrativeArea', name: 'West Sussex' },
-      { '@type': 'AdministrativeArea', name: 'East Sussex' },
+      { '@type': 'AdministrativeArea', name: 'Sussex' },
     ],
     serviceType: 'Paddock maintenance',
     // Ties the site to the business's other web presences (Google Business

@@ -60,7 +60,7 @@ export const CREDENTIALS = {
 export const AREA = {
   eyebrow: 'Where I work',
   headlineHtml: 'Hampshire and the <em>surrounding counties</em>.',
-  body: "If you&rsquo;re in Hampshire or anywhere not too far over the border &mdash; Wiltshire, West Sussex, Surrey, Berkshire, Dorset &mdash; get in touch and we&rsquo;ll work out whether the trip makes sense. For most jobs it does. Quote first, then decide.",
+  body: "If you&rsquo;re in Hampshire or anywhere not too far over the border &mdash; Wiltshire, Sussex, Surrey, Berkshire, Dorset &mdash; get in touch and we&rsquo;ll work out whether the trip makes sense. For most jobs it does. Quote first, then decide.",
 };
 
 export const CTA = {

@@ -14,7 +14,7 @@ export function PhoneStrip() {
         <span className={styles.label}>Hampshire &amp; surrounding counties</span>
       </div>
       <div className={styles.coverage}>
-        Covering Hampshire, Wiltshire, Berkshire, East Sussex, Dorset and Surrey
+        Covering Hampshire, Wiltshire, Berkshire, Sussex, Dorset and Surrey
       </div>
     </section>
   );
