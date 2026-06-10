@@ -51,6 +51,13 @@ const nextConfig = {
   // See `audit-slugs-report.md` (regenerate with scripts/audit-slugs.mjs).
   async redirects() {
     return [
+      // Canonical host: www serves the site too unless redirected here.
+      {
+        source: '/:path*',
+        has: [{ type: 'host', value: 'www.hampshirepaddockmanagement.com' }],
+        destination: 'https://hampshirepaddockmanagement.com/:path*',
+        permanent: true,
+      },
       // Services renamed during the rebuild
       { source: '/services/dung-sweeping',       destination: '/services/manure-sweeping',       permanent: true },
       { source: '/services/fertiliser-spraying', destination: '/services/fertiliser-application', permanent: true },
