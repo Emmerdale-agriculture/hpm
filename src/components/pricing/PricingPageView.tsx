@@ -90,6 +90,7 @@ export function PricingPageView({
                 alt={p.alt}
                 fill
                 sizes="(max-width: 1100px) 0px, 140px"
+                quality={60}
                 style={{ objectFit: 'cover' }}
               />
             </div>
@@ -221,6 +222,7 @@ export function PricingPageView({
                 alt={p.alt}
                 fill
                 sizes="(max-width: 1100px) 0px, 140px"
+                quality={60}
                 style={{ objectFit: 'cover' }}
               />
             </div>

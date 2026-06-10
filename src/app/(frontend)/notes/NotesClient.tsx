@@ -128,6 +128,7 @@ function PostCard({ post }: { post: NoteCard }) {
             width={post.hero.width ?? 800}
             height={post.hero.height ?? 500}
             sizes="(max-width: 768px) 100vw, (max-width: 1100px) 50vw, 33vw"
+            quality={60}
             className={styles.postPhoto}
             style={{ width: '100%', height: '100%' }}
           />

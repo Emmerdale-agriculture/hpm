@@ -82,6 +82,7 @@ export function FleetSection({ photo }: Props) {
               alt={photoAlt}
               fill
               sizes="(max-width: 900px) 100vw, 50vw"
+              quality={60}
               style={{ objectFit: 'cover' }}
             />
           )}

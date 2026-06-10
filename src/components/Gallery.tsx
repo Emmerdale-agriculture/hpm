@@ -125,6 +125,7 @@ export function Gallery({ photos }: Props) {
                 width={w}
                 height={h}
                 sizes="(max-width: 768px) 50vw, (max-width: 1100px) 33vw, 25vw"
+                quality={60}
                 loading="lazy"
               />
             </button>

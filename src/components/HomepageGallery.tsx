@@ -41,6 +41,7 @@ export function HomepageGallery({ images }: Props) {
                   // (~280px). Cap at 320px on mobile so next/image doesn't
                   // upscale to the 1080w deviceSize bucket.
                   sizes="(max-width: 768px) 320px, (max-width: 1100px) 33vw, 25vw"
+                  quality={60}
                   style={{ objectFit: 'cover' }}
                 />
               )}

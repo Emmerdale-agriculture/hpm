@@ -71,6 +71,7 @@ function ServiceTile({ service, feature }: { service: ServiceDoc; feature?: bool
                 // off the 1080w bucket.
                 : '(max-width: 768px) 320px, (max-width: 1100px) 33vw, 25vw'
             }
+            quality={feature ? 75 : 60}
             style={{ objectFit: 'cover' }}
           />
         )}

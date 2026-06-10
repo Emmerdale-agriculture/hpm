@@ -35,8 +35,11 @@ const nextConfig = {
     // optimisations next/image queues per page. With ~15 service tiles
     // each fanning out a srcset, the previous 7+8 entries hit 130+
     // concurrent Sharp jobs and saturated the dev optimizer (504s).
-    deviceSizes: [640, 1080, 1920],
-    imageSizes: [256, 640],
+    // 828 fills the 640→1080 gap: card slots (~360px CSS) on 2x displays
+    // need ~720px files and were jumping to 1080 (≈40% heavier).
+    deviceSizes: [640, 828, 1080, 1920],
+    // Must not overlap deviceSizes — 640 here duplicated the 640w srcset entry.
+    imageSizes: [256, 384],
   },
 
   // /quote serves the contact page without a redirect — both URLs are

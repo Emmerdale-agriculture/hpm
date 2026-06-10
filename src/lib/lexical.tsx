@@ -1,7 +1,7 @@
 import Image from 'next/image';
 import Link from 'next/link';
 import type { ReactNode } from 'react';
-import { mediaUrl } from './media';
+import { mediaDimensions, mediaUrl } from './media';
 
 /**
  * Minimal Lexical → JSX renderer matching the node shapes the WordPress
@@ -107,13 +107,18 @@ function renderNode(node: LexicalNode | undefined, key: string, opts: RenderOpts
     const url = mediaUrl(media, 'feature') ?? mediaUrl(media);
     if (!url) return null;
     const alt = (typeof media === 'object' && media?.alt) || '';
+    // Real dimensions keep the aspect-ratio placeholder honest — a fixed
+    // 1200×800 made portrait uploads shift layout when the file loaded.
+    const dims =
+      (typeof media === 'object' ? mediaDimensions(media, 'feature') : null) ??
+      { width: 1200, height: 800 };
     return (
       <figure key={key} style={{ margin: '32px 0' }}>
         <Image
           src={url}
           alt={alt}
-          width={1200}
-          height={800}
+          width={dims.width}
+          height={dims.height}
           sizes="(max-width: 900px) 100vw, 800px"
           style={{ width: '100%', height: 'auto', display: 'block' }}
         />

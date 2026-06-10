@@ -38,6 +38,7 @@ export function RelatedServices({ services }: Props) {
                     alt={alt}
                     fill
                     sizes="(max-width: 900px) 100vw, 30vw"
+                    quality={60}
                     style={{ objectFit: 'contain' }}
                   />
                 )}
