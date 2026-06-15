@@ -105,9 +105,14 @@ export async function runAgent(opts: RunOptions): Promise<AgentRunSummary> {
     .map((r) => ({ row: r, triage: triageRow(r) }))
     .filter((c): c is { row: typeof c.row; triage: Extract<typeof c.triage, { candidate: true }> } => c.triage.candidate);
 
-  // 4) Classify each candidate (Haiku — cheap)
+  // 4) Classify each candidate (Haiku — cheap). The classifier owns INTENT and
+  //    the keep/skip decision only; the opportunity TYPE is decided by triage's
+  //    position bands (step 5). The model has no position thresholds, so left to
+  //    type things itself it mislabels — e.g. a position-21 query as a
+  //    meta_rewrite when its rank only justifies a new article.
   const classified: Array<{
     row: (typeof triaged)[number]['row'];
+    suggestedType: OpportunityType;
     classification: Awaited<ReturnType<typeof classifyQuery>>;
   }> = [];
   for (const c of triaged) {
@@ -117,17 +122,27 @@ export async function runAgent(opts: RunOptions): Promise<AgentRunSummary> {
     }
     try {
       const classification = await classifyQuery(c.row, ctx, budget);
-      classified.push({ row: c.row, classification });
+      classified.push({ row: c.row, suggestedType: c.triage.suggestedType, classification });
     } catch (err) {
       errors.push(`Classify "${c.row.query}" failed: ${err instanceof Error ? err.message : String(err)}`);
     }
   }
 
-  // 5) Promote to typed candidates (drop classifier 'skip')
+  // 5) Promote to typed candidates. Type is authoritative from triage's
+  //    position bands; the classifier only gates keep/skip and supplies intent.
+  //    Re-apply the brief's guard here (it used to live in the classifier, back
+  //    when the classifier set the type): never raise a new_article for
+  //    transactional or local intent — tweak the service page or skip instead.
   const promoted: WorkItem[] = [];
   for (const c of classified) {
     if (c.classification.type === 'skip') continue;
-    promoted.push({ row: c.row, type: c.classification.type, classification: c.classification });
+    if (
+      c.suggestedType === 'new_article' &&
+      (c.classification.intent === 'transactional' || c.classification.intent === 'local')
+    ) {
+      continue;
+    }
+    promoted.push({ row: c.row, type: c.suggestedType, classification: c.classification });
   }
 
   // 6) Cannibalisation: downgrade colliding new_article -> on_page_tweak

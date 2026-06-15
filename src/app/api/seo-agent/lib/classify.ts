@@ -63,15 +63,15 @@ export async function classifyQuery(
   const intent = normaliseIntent(result.intent);
   const type = normaliseType(result.type);
 
-  // Hard guardrail: enforce the brief's local-intent rule even if the model wobbles.
-  const enforcedType: ClassifierVerdict =
-    (intent === 'transactional' || intent === 'local') && type === 'new_article'
-      ? 'skip'
-      : type;
-
+  // The opportunity TYPE is decided downstream from triage's position bands,
+  // not from this value — the model has no position thresholds. We surface the
+  // model's verdict only so the orchestrator can honour an explicit 'skip'
+  // (e.g. a transactional query already served by a service page). The brief's
+  // "no article for transactional/local intent" guard is enforced in the
+  // orchestrator against the authoritative triage type.
   return {
     intent,
-    type: enforcedType,
+    type,
     rationale: result.rationale ?? '',
   };
 }
