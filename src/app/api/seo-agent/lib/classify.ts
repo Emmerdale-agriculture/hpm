@@ -25,9 +25,10 @@ OPPORTUNITY TYPE (what action makes sense):
 - meta_rewrite: page ranks well, just needs better title/meta
 - on_page_tweak: page is striking distance, needs content additions
 - new_article: genuine gap, informational/commercial intent only
-- skip: not worth acting on (e.g. transactional query already served by a service page)
+- skip: not worth acting on — e.g. a transactional query already served by a service page, or a bare dictionary/definitional lookup with no realistic path to an enquiry ("rotavation meaning", "rotavated meaning", "what does harrowing mean")
 
 Hard rule: never return new_article for transactional or local intent. Those should be meta_rewrite or on_page_tweak against the relevant Service page, or skip.
+Hard rule: skip bare definitional/"meaning"/"definition" lookups for a term — they bring no commercial value. But do NOT skip genuine how-to or problem-solving informational queries a landowner researches before hiring ("how often should you top a paddock", "what is ragwort", "why is my paddock waterlogged"); those are real article opportunities.
 
 Respond with strict JSON only, no preamble:
 {"intent": "...", "type": "...", "rationale": "one sentence"}`;
