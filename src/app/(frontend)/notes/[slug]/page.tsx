@@ -38,15 +38,22 @@ const getPostBySlug = cache(async (slug: string) => {
 });
 
 export async function generateStaticParams() {
-  const payload = await getPayload({ config });
-  const res = await payload.find({
-    collection: 'posts',
-    where: { _status: { equals: 'published' } },
-    limit: 500,
-    depth: 0,
-    select: { slug: true },
-  });
-  return res.docs.map((d) => ({ slug: String(d.slug) }));
+  // A build-time DB blip must not fail the deploy. On error, prerender nothing —
+  // pages render on demand and ISR (revalidate) caches them from then on.
+  try {
+    const payload = await getPayload({ config });
+    const res = await payload.find({
+      collection: 'posts',
+      where: { _status: { equals: 'published' } },
+      limit: 500,
+      depth: 0,
+      select: { slug: true },
+    });
+    return res.docs.map((d) => ({ slug: String(d.slug) }));
+  } catch (err) {
+    console.error('[notes/[slug]] generateStaticParams DB query failed:', err);
+    return [];
+  }
 }
 
 export async function generateMetadata({

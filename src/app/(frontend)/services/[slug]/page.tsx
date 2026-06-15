@@ -82,14 +82,21 @@ const findService = cache(async (slug: string) => {
 });
 
 export async function generateStaticParams() {
-  const payload = await getPayload({ config });
-  const res = await payload.find({
-    collection: 'services',
-    limit: 200,
-    depth: 0,
-    select: { slug: true },
-  });
-  return res.docs.map((d) => ({ slug: String(d.slug) }));
+  // A build-time DB blip must not fail the deploy. On error, prerender nothing —
+  // pages render on demand and ISR (revalidate) caches them from then on.
+  try {
+    const payload = await getPayload({ config });
+    const res = await payload.find({
+      collection: 'services',
+      limit: 200,
+      depth: 0,
+      select: { slug: true },
+    });
+    return res.docs.map((d) => ({ slug: String(d.slug) }));
+  } catch (err) {
+    console.error('[services/[slug]] generateStaticParams DB query failed:', err);
+    return [];
+  }
 }
 
 export default async function ServicePage({ params }: { params: Promise<Params> }) {
