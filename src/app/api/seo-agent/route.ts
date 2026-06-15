@@ -1,11 +1,11 @@
 /**
- * GET /api/seo-agent — weekly cron entrypoint.
+ * GET /api/seo-agent — monthly cron entrypoint.
  *
  * Authenticated by the `Authorization: Bearer <CRON_SECRET>` header
  * Vercel sends to scheduled invocations. Same path is used for the
  * manual trigger via /api/seo-agent/run (POST).
  *
- * Schedule is defined in vercel.json: Mondays 07:00 UTC.
+ * Schedule is defined in vercel.json: 07:00 UTC on the 1st of each month.
  */
 
 import { NextResponse } from 'next/server';

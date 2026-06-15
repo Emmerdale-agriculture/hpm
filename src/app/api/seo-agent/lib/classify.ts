@@ -25,9 +25,10 @@ OPPORTUNITY TYPE (what action makes sense):
 - meta_rewrite: page ranks well, just needs better title/meta
 - on_page_tweak: page is striking distance, needs content additions
 - new_article: genuine gap, informational/commercial intent only
-- skip: not worth acting on (e.g. transactional query already served by a service page)
+- skip: not worth acting on — e.g. a transactional query already served by a service page, or a bare dictionary/definitional lookup with no realistic path to an enquiry ("rotavation meaning", "rotavated meaning", "what does harrowing mean")
 
 Hard rule: never return new_article for transactional or local intent. Those should be meta_rewrite or on_page_tweak against the relevant Service page, or skip.
+Hard rule: skip bare definitional/"meaning"/"definition" lookups for a term — they bring no commercial value. But do NOT skip genuine how-to or problem-solving informational queries a landowner researches before hiring ("how often should you top a paddock", "what is ragwort", "why is my paddock waterlogged"); those are real article opportunities.
 
 Respond with strict JSON only, no preamble:
 {"intent": "...", "type": "...", "rationale": "one sentence"}`;
@@ -63,15 +64,15 @@ export async function classifyQuery(
   const intent = normaliseIntent(result.intent);
   const type = normaliseType(result.type);
 
-  // Hard guardrail: enforce the brief's local-intent rule even if the model wobbles.
-  const enforcedType: ClassifierVerdict =
-    (intent === 'transactional' || intent === 'local') && type === 'new_article'
-      ? 'skip'
-      : type;
-
+  // The opportunity TYPE is decided downstream from triage's position bands,
+  // not from this value — the model has no position thresholds. We surface the
+  // model's verdict only so the orchestrator can honour an explicit 'skip'
+  // (e.g. a transactional query already served by a service page). The brief's
+  // "no article for transactional/local intent" guard is enforced in the
+  // orchestrator against the authoritative triage type.
   return {
     intent,
-    type: enforcedType,
+    type,
     rationale: result.rationale ?? '',
   };
 }
