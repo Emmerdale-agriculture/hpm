@@ -12,8 +12,6 @@ const SITE_URL = (
 export const revalidate = 3600;
 
 export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
-  const payload = await getPayload({ config });
-
   const now = new Date();
 
   const staticPages: MetadataRoute.Sitemap = [
@@ -28,42 +26,55 @@ export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
     { url: `${SITE_URL}/privacy`,  lastModified: now, changeFrequency: 'yearly',  priority: 0.3 },
   ];
 
-  const [services, posts] = await Promise.all([
-    payload.find({
-      collection: 'services',
-      where: { category: { exists: true } }, // skip orphan / non-canonical entries
-      limit: 500,
-      depth: 0,
-      select: { slug: true, updatedAt: true },
-    }),
-    payload.find({
-      collection: 'posts',
-      where: { _status: { equals: 'published' } },
-      limit: 1000,
-      depth: 0,
-      select: { slug: true, updatedAt: true },
-    }),
-  ]);
+  // A transient DB error here must NOT fail the whole deploy — Next prerenders
+  // the sitemap at build time, so a build-time connection blip would otherwise
+  // abort the build. Degrade to the static routes on failure; ISR (revalidate)
+  // backfills the dynamic entries on the next successful regeneration.
+  let dynamicPages: MetadataRoute.Sitemap = [];
+  try {
+    const payload = await getPayload({ config });
 
-  const servicePages: MetadataRoute.Sitemap = services.docs
-    .filter((s) => typeof s.slug === 'string')
-    .map((s) => ({
-      url: `${SITE_URL}/services/${s.slug}`,
-      lastModified: s.updatedAt ? new Date(s.updatedAt) : now,
-      changeFrequency: 'monthly' as const,
-      priority: 0.7,
-    }));
+    const [services, posts] = await Promise.all([
+      payload.find({
+        collection: 'services',
+        where: { category: { exists: true } }, // skip orphan / non-canonical entries
+        limit: 500,
+        depth: 0,
+        select: { slug: true, updatedAt: true },
+      }),
+      payload.find({
+        collection: 'posts',
+        where: { _status: { equals: 'published' } },
+        limit: 1000,
+        depth: 0,
+        select: { slug: true, updatedAt: true },
+      }),
+    ]);
 
-  const postPages: MetadataRoute.Sitemap = posts.docs
-    .filter((p) => typeof p.slug === 'string')
-    .map((p) => ({
-      url: `${SITE_URL}/notes/${p.slug}`,
-      lastModified: p.updatedAt ? new Date(p.updatedAt) : now,
-      // 'monthly' (not 'yearly') — posts get edited/refreshed and the /notes
-      // index is 'weekly'; aligning signals that posts can change.
-      changeFrequency: 'monthly' as const,
-      priority: 0.6,
-    }));
+    const servicePages: MetadataRoute.Sitemap = services.docs
+      .filter((s) => typeof s.slug === 'string')
+      .map((s) => ({
+        url: `${SITE_URL}/services/${s.slug}`,
+        lastModified: s.updatedAt ? new Date(s.updatedAt) : now,
+        changeFrequency: 'monthly' as const,
+        priority: 0.7,
+      }));
 
-  return [...staticPages, ...servicePages, ...postPages];
+    const postPages: MetadataRoute.Sitemap = posts.docs
+      .filter((p) => typeof p.slug === 'string')
+      .map((p) => ({
+        url: `${SITE_URL}/notes/${p.slug}`,
+        lastModified: p.updatedAt ? new Date(p.updatedAt) : now,
+        // 'monthly' (not 'yearly') — posts get edited/refreshed and the /notes
+        // index is 'weekly'; aligning signals that posts can change.
+        changeFrequency: 'monthly' as const,
+        priority: 0.6,
+      }));
+
+    dynamicPages = [...servicePages, ...postPages];
+  } catch (err) {
+    console.error('[sitemap] DB query failed — serving static routes only:', err);
+  }
+
+  return [...staticPages, ...dynamicPages];
 }
