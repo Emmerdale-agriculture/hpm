@@ -73,6 +73,8 @@ export async function Footer() {
             <li><Link href="/pricing">Pricing</Link></li>
             <li><Link href="/gallery">Gallery</Link></li>
             <li><Link href="/contact">Contact</Link></li>
+            {/* Sister site: overflow jobs passed to vetted contractors. */}
+            <li><a href="https://emmerdaleagriculture.com">Contractor network</a></li>
           </ul>
         </div>
 
