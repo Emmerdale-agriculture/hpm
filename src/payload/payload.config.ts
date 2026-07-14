@@ -87,6 +87,11 @@ export default buildConfig({
           prefix: 'media',
         },
       },
+      // Upload from the browser straight to Supabase Storage via presigned
+      // URLs. Server-relayed uploads die at Vercel's ~4.5MB request-body cap
+      // (a bare 413 the admin surfaces as "Something went wrong"), which is
+      // why phone photos have been failing to upload.
+      clientUploads: true,
       bucket: process.env.SUPABASE_S3_BUCKET || 'hpm-media',
       config: {
         endpoint: process.env.SUPABASE_S3_ENDPOINT,
