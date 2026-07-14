@@ -71,9 +71,14 @@ export async function generateMetadata({
       | { metaTitle?: string; metaDescription?: string; canonicalUrl?: string; noIndex?: boolean; ogImage?: unknown }
       | null
       | undefined) ?? {};
-  // Explicit SEO OG image wins; fall back to the post hero.
-  const ogMedia = (seo.ogImage ?? heroMedia) as Parameters<typeof mediaUrl>[0];
-  const ogImage = mediaUrl(ogMedia, 'large') ?? mediaUrl(ogMedia);
+  // Explicit SEO OG image wins; fall back to the post hero whenever it's
+  // absent OR doesn't resolve to a usable URL (unpopulated relation, etc.).
+  const seoOgMedia = seo.ogImage as Parameters<typeof mediaUrl>[0];
+  const ogImage =
+    mediaUrl(seoOgMedia, 'large') ??
+    mediaUrl(seoOgMedia) ??
+    mediaUrl(heroMedia, 'large') ??
+    mediaUrl(heroMedia);
   const description = seo.metaDescription || post.excerpt || 'Notes from Hampshire Paddock Management.';
   const canonical = seo.canonicalUrl?.trim() || `/notes/${post.slug}`;
   // Use the tuned metaTitle verbatim if set; otherwise the post title plus

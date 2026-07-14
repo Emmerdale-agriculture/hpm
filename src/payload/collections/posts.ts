@@ -17,12 +17,11 @@ const revalidatePosts: CollectionAfterChangeHook = ({ doc, previousDoc }) => {
   if (!wasPublic && !isPublic) return;
   try {
     revalidateTag('posts');
-    // The post's own page is ISR-cached with no tag on its query, so the tag
-    // alone leaves stale HTML for up to an hour — purge the path directly.
-    if (doc?.slug) revalidatePath(`/notes/${doc.slug}`);
-    if (previousDoc?.slug && previousDoc.slug !== doc?.slug) {
-      revalidatePath(`/notes/${previousDoc.slug}`);
-    }
+    // Post pages are ISR-cached with no tag on their query, so the tag alone
+    // leaves stale HTML for up to an hour. Purge the whole dynamic route:
+    // per-slug purging misses renames (autosave rewrites previousDoc.slug
+    // before publish), and pages regenerate lazily on next request anyway.
+    revalidatePath('/notes/[slug]', 'page');
   } catch {
     // revalidateTag throws if called outside a request scope (e.g. seed scripts).
     // Safe to ignore — the cache will refresh on its own TTL.
@@ -33,7 +32,7 @@ const revalidatePostsOnDelete: CollectionAfterDeleteHook = ({ doc }) => {
   if (doc?._status !== 'published') return;
   try {
     revalidateTag('posts');
-    if (doc?.slug) revalidatePath(`/notes/${doc.slug}`);
+    revalidatePath('/notes/[slug]', 'page');
   } catch {
     // see above
   }

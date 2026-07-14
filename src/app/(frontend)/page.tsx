@@ -44,6 +44,8 @@ const getHomePageData = unstable_cache(
         collection: 'media',
         where: {
           showOnHomepageGallery: { equals: true },
+          // Media also accepts mp4/pdf — only photos belong in the grid.
+          mimeType: { contains: 'image/' },
           or: [
             { hideFromGallery: { equals: false } },
             { hideFromGallery: { exists: false } },

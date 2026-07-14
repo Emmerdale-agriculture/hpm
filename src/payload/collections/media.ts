@@ -1,12 +1,22 @@
 import type { CollectionBeforeValidateHook, CollectionConfig } from 'payload';
 import { revalidateTag } from 'next/cache';
 
-// Derive a human-readable alt from the filename when the author leaves it
-// blank ("Althorne horse breeders.webp" → "Althorne horse breeders"), so
-// bulk uploads save without opening every file's edit form. Authors can
-// still write a better one by hand afterwards.
-const altFromFilename: CollectionBeforeValidateHook = ({ data, req }) => {
-  if (!data) return data;
+// Camera/device names (IMG_1234, DSC0001, PXL_2026…, Screenshot 2026-…,
+// long digit/hex runs) make useless alt text — leave those blank so the
+// frontend's contextual fallbacks (post title etc.) apply instead.
+const looksLikeCameraFilename = (base: string): boolean => {
+  const compact = base.replace(/\s+/g, '');
+  if (/^(img|dsc|dscn|pxl|gopr|image|photo|screenshot|untitled)?[\s_-]*[0-9a-f-]{4,}$/i.test(compact)) return true;
+  const letters = (base.match(/[a-z]/gi) ?? []).length;
+  return letters < base.length * 0.4;
+};
+
+// Derive a human-readable alt from the filename on first upload when the
+// author leaves it blank ("Althorne horse breeders.webp" → "Althorne horse
+// breeders"), so bulk uploads save without opening every file's edit form.
+// Create-only: clearing a bad alt later must stick, not silently re-fill.
+const altFromFilename: CollectionBeforeValidateHook = ({ data, operation, req }) => {
+  if (!data || operation !== 'create') return data;
   if (typeof data.alt === 'string' && data.alt.trim()) return data;
   const source =
     (typeof data.filename === 'string' && data.filename) || req?.file?.name || '';
@@ -15,7 +25,7 @@ const altFromFilename: CollectionBeforeValidateHook = ({ data, req }) => {
     .replace(/[-_]+/g, ' ')
     .replace(/\s+/g, ' ')
     .trim();
-  if (!base) return data;
+  if (!base || looksLikeCameraFilename(base)) return data;
   data.alt = base.charAt(0).toUpperCase() + base.slice(1);
   return data;
 };
@@ -34,8 +44,8 @@ const revalidateMedia = () => {
 /**
  * Media — every image, video, or file upload.
  *
- * Alt text is required for accessibility and SEO. Payload enforces this
- * at the field level.
+ * Alt text is auto-derived from descriptive filenames on upload (create
+ * only); camera-style names are skipped so frontend fallbacks apply.
  *
  * Storage: in production, this collection will be configured to store
  * files in Supabase Storage via @payloadcms/storage-s3. In development,
@@ -58,21 +68,20 @@ export const Media: CollectionConfig = {
     afterDelete: [revalidateMedia],
   },
   upload: {
-    // Generate responsive sizes for <picture>/srcset
+    // Generate responsive sizes for <picture>/srcset. Each variant converts
+    // to webp; the ORIGINAL file must keep its uploaded format — with
+    // clientUploads the browser has already PUT the original to storage, and
+    // a main-file format conversion would rename the doc to a .webp object
+    // that never gets uploaded (every non-webp upload would 404).
     imageSizes: [
-      { name: 'thumbnail', width: 400, height: 300, position: 'centre' },
-      { name: 'card', width: 768, height: 512, position: 'centre' },
-      { name: 'feature', width: 1200, height: 800, position: 'centre' },
-      { name: 'hero', width: 2000, height: 1200, position: 'centre' },
+      { name: 'thumbnail', width: 400, height: 300, position: 'centre', formatOptions: { format: 'webp', options: { quality: 82 } } },
+      { name: 'card', width: 768, height: 512, position: 'centre', formatOptions: { format: 'webp', options: { quality: 82 } } },
+      { name: 'feature', width: 1200, height: 800, position: 'centre', formatOptions: { format: 'webp', options: { quality: 82 } } },
+      { name: 'hero', width: 2000, height: 1200, position: 'centre', formatOptions: { format: 'webp', options: { quality: 82 } } },
       // Width-only (no height ⇒ no crop). For places that want the full
       // composition but at a sane bandwidth: hero photos, gallery lightbox.
-      { name: 'large', width: 2000 },
+      { name: 'large', width: 2000, formatOptions: { format: 'webp', options: { quality: 82 } } },
     ],
-    // Strip EXIF / orientation — matters when owners upload phone photos
-    formatOptions: {
-      format: 'webp',
-      options: { quality: 82 },
-    },
     adminThumbnail: 'thumbnail',
     mimeTypes: ['image/*', 'video/mp4', 'application/pdf'],
   },
