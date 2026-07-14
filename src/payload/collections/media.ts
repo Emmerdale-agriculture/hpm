@@ -4,6 +4,12 @@ import { revalidateTag } from 'next/cache';
 // Camera/device names (IMG_1234, DSC0001, PXL_2026…, Screenshot 2026-…,
 // long digit/hex runs) make useless alt text — leave those blank so the
 // frontend's contextual fallbacks (post title etc.) apply instead.
+// Public bucket URL for a stored media file. Must stay in step with the
+// s3Storage generateFileURL in payload.config.ts and SUPABASE_PUBLIC_BASE
+// in src/lib/media.ts.
+export const publicMediaFileURL = (filename: string): string =>
+  `https://unakyuksioglmihvipmi.supabase.co/storage/v1/object/public/hpm-media/media/${encodeURIComponent(filename)}`;
+
 const looksLikeCameraFilename = (base: string): boolean => {
   const compact = base.replace(/\s+/g, '');
   if (/^(img|dsc|dscn|pxl|gopr|image|photo|screenshot|untitled)?[\s_-]*[0-9a-f-]{4,}$/i.test(compact)) return true;
@@ -84,7 +90,18 @@ export const Media: CollectionConfig = {
       // composition but at a sane bandwidth: hero photos, gallery lightbox.
       { name: 'large', width: 2000, formatOptions: { format: 'webp', options: { quality: 82 } } },
     ],
-    adminThumbnail: 'thumbnail',
+    // A function, not the size name: the string form builds thumbnailURL
+    // from the /api/media/file/* proxy route, which disablePayloadAccessControl
+    // removed — the admin list rendered no thumbnails at all. Point straight
+    // at the public bucket instead.
+    adminThumbnail: ({ doc }) => {
+      const sizes = doc?.sizes as
+        | Record<string, { filename?: string | null }>
+        | null
+        | undefined;
+      const filename = sizes?.thumbnail?.filename ?? (doc?.filename as string | undefined);
+      return typeof filename === 'string' && filename ? publicMediaFileURL(filename) : null;
+    },
     mimeTypes: ['image/*', 'video/mp4', 'application/pdf'],
   },
   fields: [
