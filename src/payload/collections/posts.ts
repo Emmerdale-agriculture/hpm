@@ -1,5 +1,5 @@
 import type { CollectionAfterChangeHook, CollectionAfterDeleteHook, CollectionConfig } from 'payload';
-import { revalidateTag } from 'next/cache';
+import { revalidatePath, revalidateTag } from 'next/cache';
 import { seoFields } from '../fields/seo';
 import { slugField } from '../fields/slug';
 import { allContentBlocks } from '../blocks/content-blocks';
@@ -17,6 +17,12 @@ const revalidatePosts: CollectionAfterChangeHook = ({ doc, previousDoc }) => {
   if (!wasPublic && !isPublic) return;
   try {
     revalidateTag('posts');
+    // The post's own page is ISR-cached with no tag on its query, so the tag
+    // alone leaves stale HTML for up to an hour — purge the path directly.
+    if (doc?.slug) revalidatePath(`/notes/${doc.slug}`);
+    if (previousDoc?.slug && previousDoc.slug !== doc?.slug) {
+      revalidatePath(`/notes/${previousDoc.slug}`);
+    }
   } catch {
     // revalidateTag throws if called outside a request scope (e.g. seed scripts).
     // Safe to ignore — the cache will refresh on its own TTL.
@@ -27,6 +33,7 @@ const revalidatePostsOnDelete: CollectionAfterDeleteHook = ({ doc }) => {
   if (doc?._status !== 'published') return;
   try {
     revalidateTag('posts');
+    if (doc?.slug) revalidatePath(`/notes/${doc.slug}`);
   } catch {
     // see above
   }
