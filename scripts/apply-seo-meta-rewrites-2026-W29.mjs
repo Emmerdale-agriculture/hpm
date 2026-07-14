@@ -188,6 +188,28 @@ for (const post of all.docs) {
   updated++;
 }
 
+// ---- Sweep: clear thin imported service metaTitles ----------------------
+// Ten services carry bare-name metaTitles from the WP import ("Spraying",
+// "Flailing") which override the frontend's "<title> in Hampshire" fallback.
+// Clearing them lets the code fallback (with intent + geography) take over.
+console.log();
+console.log('sweep: services with thin (<28 char) imported metaTitles → cleared');
+const svcAll = await payload.find({ collection: 'services', limit: 50, depth: 0 });
+for (const svc of svcAll.docs) {
+  const mt = svc.seo?.metaTitle ?? '';
+  const pinned = UPDATES.some((u) => u.collection === 'services' && u.slug === svc.slug);
+  if (pinned || !mt || mt.length >= 28) continue;
+  console.log(`  [sweep] services/${svc.slug}: ${JSON.stringify(mt)} → (cleared, falls back to "${svc.title} in Hampshire")`);
+  if (EXECUTE) {
+    await payload.update({
+      collection: 'services',
+      id: svc.id,
+      data: { seo: { ...(svc.seo ?? {}), metaTitle: null } },
+    });
+  }
+  updated++;
+}
+
 console.log();
 console.log(`done: ${updated} updated, ${unchanged} unchanged, ${missing} missing, ${completedOpps} opportunities completed${EXECUTE ? '' : ' (dry-run)'}`);
 process.exit(0);
