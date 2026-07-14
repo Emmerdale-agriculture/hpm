@@ -66,17 +66,60 @@ async function lookup(pathname: string, origin: string): Promise<CachedRedirect 
   const cached = cache.get(pathname);
   if (cached && cached.expires > now) return cached.value;
 
-  // Try exact match first, then with-trailing-slash fallback. Next strips
-  // trailing slashes by default before the request arrives here, but legacy
-  // WP URLs in the DB are stored with trailing slashes, so both shapes need
-  // to resolve to the same redirect.
-  let value = await fetchOne(pathname, origin);
-  if (!value && pathname !== '/' && !pathname.endsWith('/')) {
-    value = await fetchOne(pathname + '/', origin);
+  // Legacy WP URLs are inconsistent about trailing slashes and casing, and
+  // the DB stores `from` exactly as entered — so try every reasonable shape:
+  // as-requested, slash-toggled, and the lowercase variants of both.
+  const slashToggled =
+    pathname !== '/' && pathname.endsWith('/')
+      ? pathname.slice(0, -1)
+      : pathname + '/';
+  const candidates = [
+    pathname,
+    slashToggled,
+    pathname.toLowerCase(),
+    slashToggled.toLowerCase(),
+  ].filter((c, i, arr) => arr.indexOf(c) === i);
+
+  let value: CachedRedirect | null = null;
+  for (const candidate of candidates) {
+    value = await fetchOne(candidate, origin);
+    if (value) break;
   }
   cache.set(pathname, { value, expires: now + TTL_MS });
   evictExpiredAndTrim(now);
   return value;
+}
+
+/**
+ * Classic WordPress permalink shapes: /?p=123 and /?page_id=45. Resolve the
+ * wpId against the posts collection (tracked through the migration) and 301
+ * to the current URL. Cached like path redirects.
+ */
+async function lookupWpQueryRedirect(wpId: string, origin: string): Promise<string | null> {
+  const cacheKey = `?p=${wpId}`;
+  const now = Date.now();
+  const cached = cache.get(cacheKey);
+  if (cached && cached.expires > now) return cached.value?.to ?? null;
+
+  let to: string | null = null;
+  try {
+    const url = new URL('/api/posts', origin);
+    url.searchParams.set('where[wpId][equals]', wpId);
+    url.searchParams.set('where[_status][equals]', 'published');
+    url.searchParams.set('limit', '1');
+    url.searchParams.set('depth', '0');
+    const res = await fetch(url.toString(), { cache: 'no-store' });
+    if (res.ok) {
+      const body = (await res.json()) as { docs?: Array<{ slug?: string }> };
+      const slug = body.docs?.[0]?.slug;
+      if (slug) to = `/notes/${slug}`;
+    }
+  } catch {
+    // fall through — no redirect
+  }
+  cache.set(cacheKey, { value: to ? { to, statusCode: 301, active: true } : null, expires: now + TTL_MS });
+  evictExpiredAndTrim(now);
+  return to;
 }
 
 // Live routes owned by the Next app — never need a DB redirect lookup.
@@ -129,17 +172,48 @@ export async function middleware(req: NextRequest) {
     return withSeoHeaders(NextResponse.next(), req);
   }
 
+  // Classic WP query-string permalinks on the root: /?p=123, /?page_id=45.
+  if (pathname === '/') {
+    const wpId = req.nextUrl.searchParams.get('p') ?? req.nextUrl.searchParams.get('page_id');
+    if (wpId && /^\d+$/.test(wpId)) {
+      const to = await lookupWpQueryRedirect(wpId, req.nextUrl.origin);
+      if (to) {
+        return withSeoHeaders(
+          NextResponse.redirect(new URL(to, req.nextUrl.origin).toString(), 301),
+          req,
+        );
+      }
+    }
+    return withSeoHeaders(NextResponse.next(), req);
+  }
+
   // Fast path: live app routes have no legacy redirects, so skip the DB hit.
-  // Strip a single trailing slash for the match (Next normalises these anyway).
+  // With skipTrailingSlashRedirect Next no longer strips slashes itself, so
+  // canonicalise /about/ → /about here with a 308 (one hop, cacheable).
   const normalised = pathname.length > 1 && pathname.endsWith('/')
     ? pathname.slice(0, -1)
     : pathname;
   if (LIVE_PATHS.has(normalised)) {
+    if (normalised !== pathname) {
+      const dest = new URL(normalised, req.nextUrl.origin);
+      dest.search = req.nextUrl.search;
+      return withSeoHeaders(NextResponse.redirect(dest.toString(), 308), req);
+    }
     return withSeoHeaders(NextResponse.next(), req);
   }
 
   const hit = await lookup(pathname, req.nextUrl.origin);
-  if (!hit || !hit.active) return withSeoHeaders(NextResponse.next(), req);
+  if (!hit || !hit.active) {
+    // No legacy redirect: still canonicalise away a trailing slash so
+    // /notes/foo/ and /services/foo/ don't serve as duplicates of the
+    // canonical slashless URL.
+    if (normalised !== pathname) {
+      const dest = new URL(normalised, req.nextUrl.origin);
+      dest.search = req.nextUrl.search;
+      return withSeoHeaders(NextResponse.redirect(dest.toString(), 308), req);
+    }
+    return withSeoHeaders(NextResponse.next(), req);
+  }
 
   if (hit.statusCode === 410) {
     return withSeoHeaders(new NextResponse('Gone', { status: 410 }), req);

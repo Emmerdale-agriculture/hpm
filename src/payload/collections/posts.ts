@@ -22,6 +22,8 @@ const revalidatePosts: CollectionAfterChangeHook = ({ doc, previousDoc }) => {
     // per-slug purging misses renames (autosave rewrites previousDoc.slug
     // before publish), and pages regenerate lazily on next request anyway.
     revalidatePath('/notes/[slug]', 'page');
+    // New/unpublished posts should reach the sitemap now, not in ≤1h.
+    revalidatePath('/sitemap.xml');
   } catch {
     // revalidateTag throws if called outside a request scope (e.g. seed scripts).
     // Safe to ignore — the cache will refresh on its own TTL.
@@ -33,6 +35,7 @@ const revalidatePostsOnDelete: CollectionAfterDeleteHook = ({ doc }) => {
   try {
     revalidateTag('posts');
     revalidatePath('/notes/[slug]', 'page');
+    revalidatePath('/sitemap.xml');
   } catch {
     // see above
   }

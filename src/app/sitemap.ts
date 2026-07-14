@@ -37,14 +37,21 @@ export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
     const [services, posts] = await Promise.all([
       payload.find({
         collection: 'services',
-        where: { category: { exists: true } }, // skip orphan / non-canonical entries
+        where: {
+          category: { exists: true }, // skip orphan / non-canonical entries
+          // noIndex pages must not be advertised — conflicting signals.
+          'seo.noIndex': { not_equals: true },
+        },
         limit: 500,
         depth: 0,
         select: { slug: true, updatedAt: true },
       }),
       payload.find({
         collection: 'posts',
-        where: { _status: { equals: 'published' } },
+        where: {
+          _status: { equals: 'published' },
+          'seo.noIndex': { not_equals: true },
+        },
         limit: 1000,
         depth: 0,
         select: { slug: true, updatedAt: true },
