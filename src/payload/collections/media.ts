@@ -11,13 +11,13 @@ const looksLikeCameraFilename = (base: string): boolean => {
   return letters < base.length * 0.4;
 };
 
-// Derive a human-readable alt from the filename on first upload when the
-// author leaves it blank ("Althorne horse breeders.webp" → "Althorne horse
+// Derive human-readable alt AND caption from the filename on first upload
+// when left blank ("Althorne horse breeders.webp" → "Althorne horse
 // breeders"), so bulk uploads save without opening every file's edit form.
-// Create-only: clearing a bad alt later must stick, not silently re-fill.
+// Create-only: clearing either field later must stick, not silently re-fill.
+// Captions render publicly under photos, hence the camera-name guard.
 const altFromFilename: CollectionBeforeValidateHook = ({ data, operation, req }) => {
   if (!data || operation !== 'create') return data;
-  if (typeof data.alt === 'string' && data.alt.trim()) return data;
   const source =
     (typeof data.filename === 'string' && data.filename) || req?.file?.name || '';
   const base = source
@@ -26,7 +26,9 @@ const altFromFilename: CollectionBeforeValidateHook = ({ data, operation, req })
     .replace(/\s+/g, ' ')
     .trim();
   if (!base || looksLikeCameraFilename(base)) return data;
-  data.alt = base.charAt(0).toUpperCase() + base.slice(1);
+  const derived = base.charAt(0).toUpperCase() + base.slice(1);
+  if (!(typeof data.alt === 'string' && data.alt.trim())) data.alt = derived;
+  if (!(typeof data.caption === 'string' && data.caption.trim())) data.caption = derived;
   return data;
 };
 
@@ -98,7 +100,8 @@ export const Media: CollectionConfig = {
       name: 'caption',
       type: 'text',
       admin: {
-        description: 'Optional caption shown with the image on the site.',
+        description:
+          'Optional caption shown with the image on the site. Auto-filled from a descriptive filename if left blank.',
       },
     },
     {
