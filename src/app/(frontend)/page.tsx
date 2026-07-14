@@ -49,6 +49,7 @@ const getHomePageData = unstable_cache(
             { hideFromGallery: { exists: false } },
           ],
         },
+        sort: '-createdAt',
         limit: 12,
         depth: 0,
       }),

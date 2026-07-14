@@ -1,5 +1,24 @@
-import type { CollectionConfig } from 'payload';
+import type { CollectionBeforeValidateHook, CollectionConfig } from 'payload';
 import { revalidateTag } from 'next/cache';
+
+// Derive a human-readable alt from the filename when the author leaves it
+// blank ("Althorne horse breeders.webp" → "Althorne horse breeders"), so
+// bulk uploads save without opening every file's edit form. Authors can
+// still write a better one by hand afterwards.
+const altFromFilename: CollectionBeforeValidateHook = ({ data, req }) => {
+  if (!data) return data;
+  if (typeof data.alt === 'string' && data.alt.trim()) return data;
+  const source =
+    (typeof data.filename === 'string' && data.filename) || req?.file?.name || '';
+  const base = source
+    .replace(/\.[a-z0-9]+$/i, '')
+    .replace(/[-_]+/g, ' ')
+    .replace(/\s+/g, ' ')
+    .trim();
+  if (!base) return data;
+  data.alt = base.charAt(0).toUpperCase() + base.slice(1);
+  return data;
+};
 
 // unstable_cache tag used by gallery/page.tsx so toggles in the admin
 // reflect on the public site immediately rather than after the 5-min TTL.
@@ -34,6 +53,7 @@ export const Media: CollectionConfig = {
     read: () => true,
   },
   hooks: {
+    beforeValidate: [altFromFilename],
     afterChange: [revalidateMedia],
     afterDelete: [revalidateMedia],
   },
@@ -60,10 +80,9 @@ export const Media: CollectionConfig = {
     {
       name: 'alt',
       type: 'text',
-      required: true,
       admin: {
         description:
-          'Describe the image in one short sentence for screen readers and SEO. Required.',
+          'Describe the image in one short sentence for screen readers and SEO. Auto-filled from the filename if left blank.',
       },
     },
     {
@@ -83,10 +102,11 @@ export const Media: CollectionConfig = {
     {
       name: 'showOnHomepageGallery',
       type: 'checkbox',
-      defaultValue: false,
+      defaultValue: true,
       admin: {
         position: 'sidebar',
-        description: 'Include this image in the 12-image homepage gallery grid.',
+        description:
+          'Include this image in the 12-image homepage gallery grid (newest first). On by default for new uploads — untick to keep an image off the homepage.',
         components: {
           Cell: '@/payload/admin/BoolToggleCell#BoolToggleCell',
         },
