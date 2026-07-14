@@ -34,6 +34,24 @@ import config from '../src/payload/payload.config.ts';
 const EXECUTE = process.argv.includes('--execute');
 const BRAND_SUFFIX = /\s*[|–—-]\s*Hampshire Paddock Management\s*$/i;
 
+// The seo.metaTitle field maxes at 70 chars — cut at a sentence boundary
+// where possible, else at a word boundary, never with an ellipsis, and never
+// ending on a dangling joiner/stop-word.
+const titleCut = (s, max = 70) => {
+  if (s.length <= max) return s;
+  const cut = s.slice(0, max);
+  const sentenceEnd = Math.max(cut.lastIndexOf('. '), cut.lastIndexOf('! '), cut.lastIndexOf('? '));
+  if (sentenceEnd > max * 0.5) return cut.slice(0, sentenceEnd + 1).trim();
+  const lastSpace = cut.lastIndexOf(' ');
+  let out = (lastSpace > max * 0.5 ? cut.slice(0, lastSpace) : cut).trim();
+  const dangling =
+    /(\s|^)(a|an|the|and|or|to|of|in|on|at|by|for|with|from|our|your|their|his|her|its|is|are|was|were|do|does|how|what|when|why|here's|heres)$/i;
+  for (let i = 0; i < 4 && dangling.test(out); i++) {
+    out = out.replace(dangling, '').trim();
+  }
+  return out.replace(/[\s:;,.\-–—|&]+$/g, '').trim();
+};
+
 // Slug-addressed (prod and local-mirror ids have diverged — never use ids).
 const UPDATES = [
   {
@@ -158,7 +176,8 @@ for (const post of all.docs) {
   const mt = post.seo?.metaTitle ?? '';
   const pinned = UPDATES.some((u) => u.collection === 'posts' && u.slug === post.slug);
   if (!pinned && (mt.endsWith('…') || BRAND_SUFFIX.test(mt))) {
-    data.seo = { ...(post.seo ?? {}), metaTitle: cleanTitle };
+    const next = titleCut(cleanTitle, 70);
+    if (next && next !== mt) data.seo = { ...(post.seo ?? {}), metaTitle: next };
   }
 
   if (Object.keys(data).length === 0) continue;

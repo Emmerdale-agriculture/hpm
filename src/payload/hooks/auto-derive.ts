@@ -51,6 +51,28 @@ function truncate(s: string, max: number): string {
   return (lastSpace > max * 0.6 ? cut.slice(0, lastSpace) : cut).trim() + '…';
 }
 
+/**
+ * Word-boundary cut with NO ellipsis — for <title>/metaTitle text, where a
+ * literal "…" in the tag is worse than a shortened phrase. Trailing
+ * punctuation/joiners left dangling by the cut are stripped.
+ */
+export function titleCut(s: string, max: number): string {
+  if (s.length <= max) return s;
+  const cut = s.slice(0, max);
+  // Prefer ending at a sentence boundary when one lands past halfway.
+  const sentenceEnd = Math.max(cut.lastIndexOf('. '), cut.lastIndexOf('! '), cut.lastIndexOf('? '));
+  if (sentenceEnd > max * 0.5) return cut.slice(0, sentenceEnd + 1).trim();
+  const lastSpace = cut.lastIndexOf(' ');
+  let out = (lastSpace > max * 0.5 ? cut.slice(0, lastSpace) : cut).trim();
+  // Don't end on a dangling joiner/stop-word ("… Here's How", "… Returns With").
+  const dangling =
+    /(\s|^)(a|an|the|and|or|to|of|in|on|at|by|for|with|from|our|your|their|his|her|its|is|are|was|were|do|does|how|what|when|why|here's|heres)$/i;
+  for (let i = 0; i < 4 && dangling.test(out); i++) {
+    out = out.replace(dangling, '').trim();
+  }
+  return out.replace(/[\s:;,.\-–—|&]+$/g, '').trim();
+}
+
 type AutoDeriveOptions = {
   /** Copy into `excerpt` if blank (posts). */
   excerpt?: boolean;
@@ -113,11 +135,11 @@ export const autoDerive =
     const plain = extractPlainText(data.content);
 
     // SEO meta title / description — fall back to title and body content.
-    // metaTitle is used verbatim (absolute) — never truncate it: a literal
-    // "…" written into the <title> tag is worse than a long title Google
-    // shortens itself.
+    // metaTitle is used verbatim (absolute); the field maxes at 70 chars, so
+    // long titles get a word-boundary cut with NO ellipsis — a literal "…"
+    // written into the <title> tag is worse than a shortened phrase.
     const seo = (data.seo ?? {}) as Record<string, unknown>;
-    if (!seo.metaTitle && title) seo.metaTitle = title;
+    if (!seo.metaTitle && title) seo.metaTitle = titleCut(title, 70);
     if (!seo.metaDescription && plain) seo.metaDescription = truncate(plain, 160);
     if (seo.metaTitle || seo.metaDescription) data.seo = seo;
 
