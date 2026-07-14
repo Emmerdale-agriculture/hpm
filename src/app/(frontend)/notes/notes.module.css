@@ -306,6 +306,46 @@
   font-size: 15px;
 }
 
+/* ===== FULL ARCHIVE ===== */
+.archive {
+  max-width: 900px;
+  margin: 0 auto;
+  padding: 48px 24px 64px;
+}
+.archiveTitle {
+  font-size: 20px;
+  margin-bottom: 20px;
+  color: var(--ink-1);
+}
+.archiveList {
+  list-style: none;
+  padding: 0;
+  margin: 0;
+  columns: 2;
+  column-gap: 48px;
+}
+.archiveList li {
+  margin-bottom: 10px;
+  font-size: 14px;
+  break-inside: avoid;
+}
+.archiveList a {
+  color: var(--ink-2);
+  text-decoration: none;
+}
+.archiveList a:hover {
+  text-decoration: underline;
+}
+.archiveDate {
+  color: var(--ink-3);
+  white-space: nowrap;
+}
+@media (max-width: 700px) {
+  .archiveList {
+    columns: 1;
+  }
+}
+
 /* ===== CTA BAND ===== */
 .ctaBand {
   background: var(--jd-green-deep);

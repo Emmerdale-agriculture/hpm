@@ -1,7 +1,6 @@
 import type { Metadata } from 'next';
 import Image from 'next/image';
 import Link from 'next/link';
-import { Suspense } from 'react';
 import { unstable_cache } from 'next/cache';
 import { getPayload } from 'payload';
 import config from '@payload-config';
@@ -218,10 +217,26 @@ export default async function NotesIndexPage() {
         </section>
       )}
 
-      {/* ===== FILTER + GRID + LOAD MORE (client) ===== */}
-      <Suspense fallback={null}>
-        <NotesClient posts={grid} tagOptions={TAG_OPTIONS} />
-      </Suspense>
+      {/* ===== FILTER + GRID + LOAD MORE (client-enhanced; first page of
+           cards renders in server HTML) ===== */}
+      <NotesClient posts={grid} tagOptions={TAG_OPTIONS} />
+
+      {/* ===== FULL ARCHIVE (server-rendered) =====
+           Every published post gets a crawlable link from /notes — the
+           interactive grid above only shows a page at a time. */}
+      <section className={styles.archive} aria-label="All notes">
+        <h2 className={styles.archiveTitle}>All notes</h2>
+        <ul className={styles.archiveList}>
+          {[...(featured ? [featured] : []), ...grid].map((p) => (
+            <li key={p.id}>
+              <Link href={`/notes/${p.slug}`}>{p.title}</Link>
+              {p.publishedAt && (
+                <span className={styles.archiveDate}> — {formatMonth(p.publishedAt)}</span>
+              )}
+            </li>
+          ))}
+        </ul>
+      </section>
 
       {/* ===== CTA BAND ===== */}
       <section className={styles.ctaBand}>

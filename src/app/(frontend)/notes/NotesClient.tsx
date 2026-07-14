@@ -3,7 +3,6 @@
 import { useEffect, useMemo, useState } from 'react';
 import Image from 'next/image';
 import Link from 'next/link';
-import { useSearchParams } from 'next/navigation';
 import type { NoteCard } from './types';
 import styles from './notes.module.css';
 
@@ -24,11 +23,18 @@ function formatMonth(dateStr: string | null): string {
 }
 
 export function NotesClient({ posts, tagOptions }: Props) {
-  const params = useSearchParams();
-  const initial = params.get('tag') ?? ALL;
-
-  const [activeTag, setActiveTag] = useState<string>(initial);
+  // NO useSearchParams here: it forces this whole subtree to bail out of
+  // server rendering (the grid was absent from crawlable HTML). The initial
+  // server render is always the unfiltered first page; a ?tag= deep link is
+  // applied after hydration instead.
+  const [activeTag, setActiveTag] = useState<string>(ALL);
   const [shownCount, setShownCount] = useState<number>(PAGE_SIZE);
+
+  // Apply a ?tag= deep link once on mount.
+  useEffect(() => {
+    const t = new URL(window.location.href).searchParams.get('tag');
+    if (t) setActiveTag(t);
+  }, []);
 
   // Mirror the active tag into the URL via replaceState (no Next nav).
   useEffect(() => {
@@ -38,11 +44,6 @@ export function NotesClient({ posts, tagOptions }: Props) {
     else url.searchParams.set('tag', activeTag);
     window.history.replaceState(null, '', url.toString());
   }, [activeTag]);
-
-  // Keep state in sync if the URL changes externally
-  useEffect(() => {
-    setActiveTag(params.get('tag') ?? ALL);
-  }, [params]);
 
   const filtered = useMemo(() => {
     if (activeTag === ALL) return posts;

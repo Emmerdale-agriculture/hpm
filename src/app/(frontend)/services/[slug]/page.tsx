@@ -3,7 +3,6 @@ import type { Metadata } from 'next';
 import { notFound } from 'next/navigation';
 import { getPayload } from 'payload';
 import config from '@payload-config';
-import { SITE_EMAIL, SITE_PHONE_TEL } from '@/lib/site';
 
 import { ServiceHero } from '@/components/ServiceHero';
 import { ServiceBody } from '@/components/ServiceBody';
@@ -59,13 +58,15 @@ export async function generateMetadata({
       description: desc,
       url: canonical,
       type: 'website',
-      images: og ? [{ url: og, width: 2000, height: 1200 }] : undefined,
+      images: og
+        ? [{ url: og, width: 2000, height: 1200 }]
+        : [{ url: '/og-default.jpg', width: 1200, height: 630 }],
     },
     twitter: {
       card: 'summary_large_image',
       title: svc.title,
       description: desc,
-      images: og ? [og] : undefined,
+      images: og ? [og] : ['/og-default.jpg'],
     },
   };
 }
@@ -186,17 +187,14 @@ export default async function ServicePage({ params }: { params: Promise<Params> 
       (svc.seo as { metaDescription?: string } | null | undefined)?.metaDescription ||
       svc.shortDescription,
     url: `${siteUrl.replace(/\/$/, '')}/services/${svc.slug}`,
-    provider: {
-      '@type': 'LocalBusiness',
-      name: 'Hampshire Paddock Management',
-      telephone: SITE_PHONE_TEL,
-      email: SITE_EMAIL,
-      address: {
-        '@type': 'PostalAddress',
-        addressRegion: 'Hampshire',
-        addressCountry: 'GB',
-      },
-    },
+    image:
+      mediaUrl(svc.heroImage as Parameters<typeof mediaUrl>[0], 'hero') ??
+      mediaUrl(svc.heroImage as Parameters<typeof mediaUrl>[0]) ??
+      undefined,
+    // Reference the sitewide business entity (defined once in the root
+    // layout) rather than inlining a second, partial LocalBusiness — two
+    // competing definitions with differing data confuse the graph.
+    provider: { '@id': `${siteUrl.replace(/\/$/, '')}/#business` },
     areaServed: [
       { '@type': 'AdministrativeArea', name: 'Hampshire' },
       { '@type': 'AdministrativeArea', name: 'Wiltshire' },

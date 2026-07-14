@@ -96,7 +96,11 @@ export async function generateMetadata({
       description,
       type: 'article',
       publishedTime: post.publishedAt ?? undefined,
-      images: ogImage ? [{ url: ogImage }] : undefined,
+      // Never ship a summary_large_image card with no image — 33 posts had
+      // neither hero nor SEO image; fall back to the site default.
+      images: ogImage
+        ? [{ url: ogImage }]
+        : [{ url: '/og-default.jpg', width: 1200, height: 630 }],
     },
     alternates: { canonical },
     robots: seo.noIndex ? { index: false, follow: true } : undefined,
@@ -284,10 +288,21 @@ export default async function NotePostPage({
     datePublished: post.publishedAt ?? undefined,
     dateModified: post.updatedAt ?? post.publishedAt ?? undefined,
     wordCount: wordCountFromContent(content) || undefined,
-    author: { '@type': 'Person', name: 'Tom Oswald' },
+    author: {
+      '@type': 'Person',
+      name: 'Tom Oswald',
+      url: siteUrl.replace(/\/$/, '') + '/about',
+    },
     publisher: {
       '@type': 'Organization',
       name: 'Hampshire Paddock Management',
+      // Google requires publisher.logo for Article rich-result eligibility.
+      logo: {
+        '@type': 'ImageObject',
+        url: `${siteUrl.replace(/\/$/, '')}/icon.png`,
+        width: 512,
+        height: 512,
+      },
     },
     mainEntityOfPage: `${siteUrl.replace(/\/$/, '')}/notes/${post.slug}`,
   };

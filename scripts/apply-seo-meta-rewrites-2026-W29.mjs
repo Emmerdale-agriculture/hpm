@@ -188,23 +188,27 @@ for (const post of all.docs) {
   updated++;
 }
 
-// ---- Sweep: clear thin imported service metaTitles ----------------------
+// ---- Sweep: upgrade thin imported service metaTitles ---------------------
 // Ten services carry bare-name metaTitles from the WP import ("Spraying",
-// "Flailing") which override the frontend's "<title> in Hampshire" fallback.
-// Clearing them lets the code fallback (with intent + geography) take over.
+// "Flailing"). NB: clearing them does NOT work — the autoDerive
+// beforeValidate hook refills any blank metaTitle from the title on save —
+// so write the location-aware value explicitly instead.
 console.log();
-console.log('sweep: services with thin (<28 char) imported metaTitles → cleared');
+console.log('sweep: services with thin (<28 char) imported metaTitles → location-aware');
 const svcAll = await payload.find({ collection: 'services', limit: 50, depth: 0 });
 for (const svc of svcAll.docs) {
   const mt = svc.seo?.metaTitle ?? '';
   const pinned = UPDATES.some((u) => u.collection === 'services' && u.slug === svc.slug);
   if (pinned || !mt || mt.length >= 28) continue;
-  console.log(`  [sweep] services/${svc.slug}: ${JSON.stringify(mt)} → (cleared, falls back to "${svc.title} in Hampshire")`);
+  const withBrand = `${svc.title} in Hampshire | Hampshire Paddock Management`;
+  const next = withBrand.length <= 70 ? withBrand : `${svc.title} in Hampshire`;
+  if (mt === next) continue;
+  console.log(`  [sweep] services/${svc.slug}: ${JSON.stringify(mt)} → ${JSON.stringify(next)}`);
   if (EXECUTE) {
     await payload.update({
       collection: 'services',
       id: svc.id,
-      data: { seo: { ...(svc.seo ?? {}), metaTitle: null } },
+      data: { seo: { ...(svc.seo ?? {}), metaTitle: next } },
     });
   }
   updated++;

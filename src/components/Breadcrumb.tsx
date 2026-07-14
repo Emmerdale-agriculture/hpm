@@ -1,5 +1,4 @@
 import Link from 'next/link';
-import Script from 'next/script';
 import { jsonLd as serializeJsonLd } from '@/lib/jsonld';
 import styles from './Breadcrumb.module.css';
 
@@ -38,10 +37,12 @@ export function Breadcrumb({
     : [{ label: 'Home', href: '/' }, ...items];
 
   const lastIndex = trail.length - 1;
-  const base = (siteUrl ?? process.env.NEXT_PUBLIC_SITE_URL ?? '').replace(
-    /\/$/,
-    '',
-  );
+  // Always absolute: Google rejects BreadcrumbList items with relative URLs.
+  const base = (
+    siteUrl ??
+    process.env.NEXT_PUBLIC_SITE_URL ??
+    'https://hampshirepaddockmanagement.com'
+  ).replace(/\/$/, '');
 
   const itemListElement = trail.map((c, i) => ({
     '@type': 'ListItem',
@@ -79,8 +80,10 @@ export function Breadcrumb({
         })}
       </nav>
       {jsonLd && (
-        <Script
-          id={`breadcrumb-jsonld-${trail.map((c) => c.label).join('-').replace(/\s+/g, '-')}`}
+        // JSON-LD must render in the initial HTML — plain <script>, not
+        // next/script (which is lazy / client-side only). Matches the rule
+        // followed everywhere else in the codebase.
+        <script
           type="application/ld+json"
           // eslint-disable-next-line react/no-danger
           dangerouslySetInnerHTML={{ __html: serializeJsonLd(schema) }}
