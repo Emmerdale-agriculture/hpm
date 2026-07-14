@@ -106,13 +106,13 @@ export const PricingPage: GlobalConfig = {
                 {
                   title: 'Per acre',
                   description:
-                    'Harrowing and overseeding. Pure ground-coverage work where acreage is the honest unit.',
+                    'Harrowing, overseeding and spraying. Pure ground-coverage work where acreage is the honest unit.',
                   tagline: 'Predictable for big jobs',
                 },
                 {
                   title: 'Day rate',
                   description:
-                    'Fertiliser, spraying, ploughing, mole ploughing and drainage. Specialist jobs that need a full day of setup, application, and cleardown.',
+                    'Fertiliser, ploughing, mole ploughing and drainage. Specialist jobs that need a full day of setup, application, and cleardown.',
                   tagline: 'Materials priced separately',
                 },
                 {
@@ -185,6 +185,7 @@ export const PricingPage: GlobalConfig = {
                 { name: 'Dung sweeping', pricingType: 'hourly' },
                 { name: 'Field harrowing', pricingType: 'perAcre' },
                 { name: 'Overseeding', pricingType: 'perAcre' },
+                { name: 'Spraying', pricingType: 'perAcre' },
                 { name: 'Fertiliser application', pricingType: 'dayRate' },
                 {
                   name: 'Weed control (ragwort, docks, thistles)',
@@ -338,7 +339,7 @@ export const PricingPage: GlobalConfig = {
               type: 'text',
               required: true,
               defaultValue:
-                'Fully PA1/PA2 certified, insured, and VAT registered',
+                'Fully PA1/PA2 certified, insured up to £5m, and VAT registered',
             },
             {
               name: 'trustBody',

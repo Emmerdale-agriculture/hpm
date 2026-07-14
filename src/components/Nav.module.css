@@ -59,7 +59,7 @@
   letter-spacing: 0.08em;
   text-transform: uppercase;
   text-decoration: none;
-  border-radius: 2px;
+  border-radius: 999px;
   transition: background 0.15s;
 }
 .cta:hover {
