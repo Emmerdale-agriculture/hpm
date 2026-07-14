@@ -66,12 +66,14 @@ export async function generateMetadata({
   if (!post) return { title: { absolute: 'Post not found — Hampshire Paddock Management' } };
 
   const heroMedia = post.heroImage as Parameters<typeof mediaUrl>[0];
-  const ogImage = mediaUrl(heroMedia, 'large') ?? mediaUrl(heroMedia);
   const seo =
     (post.seo as
-      | { metaTitle?: string; metaDescription?: string; canonicalUrl?: string; noIndex?: boolean }
+      | { metaTitle?: string; metaDescription?: string; canonicalUrl?: string; noIndex?: boolean; ogImage?: unknown }
       | null
       | undefined) ?? {};
+  // Explicit SEO OG image wins; fall back to the post hero.
+  const ogMedia = (seo.ogImage ?? heroMedia) as Parameters<typeof mediaUrl>[0];
+  const ogImage = mediaUrl(ogMedia, 'large') ?? mediaUrl(ogMedia);
   const description = seo.metaDescription || post.excerpt || 'Notes from Hampshire Paddock Management.';
   const canonical = seo.canonicalUrl?.trim() || `/notes/${post.slug}`;
   // Use the tuned metaTitle verbatim if set; otherwise the post title plus
