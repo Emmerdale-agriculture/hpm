@@ -93,6 +93,18 @@ export default buildConfig({
         media: {
           // Store the whole media collection in Supabase Storage
           prefix: 'media',
+          // Media is world-readable (read: () => true) and the bucket is
+          // public. Without this, every doc/size URL routes through
+          // /api/media/file/* — a serverless function that inits Payload
+          // and grabs DB connections just to stream a public image. The
+          // admin media list fires ~100 of those at once and exhausted
+          // the Supabase pooler's 200-client cap (EMAXCONN), taking down
+          // saves and page renders with it. Serve from the bucket directly.
+          disablePayloadAccessControl: true,
+          generateFileURL: ({ filename, prefix }) =>
+            `https://unakyuksioglmihvipmi.supabase.co/storage/v1/object/public/hpm-media/${
+              prefix ? `${prefix}/` : ''
+            }${encodeURIComponent(filename)}`,
         },
       },
       // Upload from the browser straight to Supabase Storage via presigned
