@@ -104,12 +104,20 @@ export const autoDerive =
     // fill in any blank derivable field from title + content.
     if (!data) return data;
 
-    const title = typeof data.title === 'string' ? data.title.trim() : '';
+    // Strip a hand-typed brand suffix — the layout template appends the brand
+    // itself, so leaving it in doubles it (and wrecks slugs derived from it).
+    const title = (typeof data.title === 'string' ? data.title.trim() : '').replace(
+      /\s*[|–—-]\s*Hampshire Paddock Management\s*$/i,
+      '',
+    );
     const plain = extractPlainText(data.content);
 
-    // SEO meta title / description — fall back to title and body content
+    // SEO meta title / description — fall back to title and body content.
+    // metaTitle is used verbatim (absolute) — never truncate it: a literal
+    // "…" written into the <title> tag is worse than a long title Google
+    // shortens itself.
     const seo = (data.seo ?? {}) as Record<string, unknown>;
-    if (!seo.metaTitle && title) seo.metaTitle = truncate(title, 70);
+    if (!seo.metaTitle && title) seo.metaTitle = title;
     if (!seo.metaDescription && plain) seo.metaDescription = truncate(plain, 160);
     if (seo.metaTitle || seo.metaDescription) data.seo = seo;
 

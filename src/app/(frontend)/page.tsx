@@ -22,8 +22,10 @@ export const metadata: Metadata = {
   // template — the brand is already in this string, so a plain string
   // title would get the brand appended a second time.
   title: { absolute: 'Paddock Maintenance Hampshire — Hampshire Paddock Management' },
+  // ≤160 chars — the previous 244-char version was rewritten by Google in
+  // SERPs; front-load the query + services + counties and end on the CTA.
   description:
-    'Professional paddock maintenance across Hampshire, Wiltshire, Berkshire, Surrey, Dorset and Sussex. Topping, harrowing, rolling, drainage, fertiliser — compact machinery on grass tyres, no ruts. The person you call is the person on the tractor.',
+    'Professional paddock maintenance in Hampshire and surrounding counties — topping, harrowing, rolling, spraying and drainage. Get a fast quote today.',
   alternates: { canonical: '/' },
 };
 

@@ -41,11 +41,13 @@ export async function generateMetadata({
     seo.canonicalUrl?.trim() || `${siteUrl.replace(/\/$/, '')}/services/${svc.slug}`;
   const desc = seo.metaDescription || svc.shortDescription || 'Paddock management in Hampshire.';
   // If a tuned metaTitle is set in the SEO tab, use it verbatim (absolute
-  // bypasses the layout template). Otherwise fall back to the bare service
-  // title and let the template add " | Hampshire Paddock Management".
+  // bypasses the layout template). Otherwise fall back to the service title
+  // plus location intent — a bare "Spraying | Brand" title is too thin to
+  // compete for "<service> in hampshire"-shaped queries — and let the
+  // template add " | Hampshire Paddock Management".
   const title: Metadata['title'] = seo.metaTitle
     ? { absolute: seo.metaTitle }
-    : svc.title;
+    : `${svc.title} in Hampshire`;
 
   return {
     title,

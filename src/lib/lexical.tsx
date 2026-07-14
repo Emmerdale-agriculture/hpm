@@ -49,7 +49,10 @@ function renderNode(node: LexicalNode | undefined, key: string, opts: RenderOpts
   }
 
   if (type === 'heading') {
-    const tag = typeof node.tag === 'string' ? node.tag : 'h2';
+    let tag = typeof node.tag === 'string' ? node.tag : 'h2';
+    // The page template owns the single h1 (the post title); body headings
+    // authored as h1 in the editor demote to h2 so we never ship multiple h1s.
+    if (tag === 'h1') tag = 'h2';
     const Tag = tag as keyof React.JSX.IntrinsicElements;
     return <Tag key={key}>{renderChildren(node.children, key, opts)}</Tag>;
   }

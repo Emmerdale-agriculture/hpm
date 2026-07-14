@@ -63,7 +63,9 @@ export async function generateMetadata(): Promise<Metadata> {
   // site default.
   const ogImage = mediaUrl(heroMedia, 'large') ?? mediaUrl(heroMedia);
   return {
-    title: data.metaTitle,
+    // The stored metaTitle already carries the brand — absolute stops the
+    // layout template appending "| Hampshire Paddock Management" a 2nd time.
+    title: { absolute: data.metaTitle },
     description: data.metaDescription,
     alternates: { canonical: '/pricing' },
     openGraph: {
