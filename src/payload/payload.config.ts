@@ -76,6 +76,14 @@ export default buildConfig({
   db: postgresAdapter({
     pool: {
       connectionString: env.DATABASE_URL,
+      // Supabase's pooler caps clients at 200 shared across EVERYTHING —
+      // every serverless instance AND every Next build worker holds its own
+      // pool. pg's default max of 10 per pool blew through the cap during
+      // builds (EMAXCONN → failed deploys). 3 is plenty per instance:
+      // queries within a request are mostly sequential.
+      max: 3,
+      // Release idle clients quickly so build workers don't sit on the cap.
+      idleTimeoutMillis: 5_000,
     },
   }),
 
