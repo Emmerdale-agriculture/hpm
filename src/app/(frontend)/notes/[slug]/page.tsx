@@ -12,6 +12,7 @@ import { Footer } from '@/components/Footer';
 import { mediaUrl } from '@/lib/media';
 import { renderLexical, collectUploadIds } from '@/lib/lexical';
 import { serviceForTag } from '@/lib/tag-service-map';
+import { tagDef } from '@/lib/tags';
 import { jsonLd } from '@/lib/jsonld';
 import styles from './post.module.css';
 
@@ -307,10 +308,15 @@ export default async function NotePostPage({
     mainEntityOfPage: `${siteUrl.replace(/\/$/, '')}/notes/${post.slug}`,
   };
 
-  const breadcrumbHref = primaryTag ? `/notes?tag=${primaryTag}` : '/notes';
-  const breadcrumbLabel = primaryTag
-    ? primaryTag.replace(/-/g, ' ').replace(/^\w/, (c) => c.toUpperCase())
-    : 'Notes from the field';
+  // Curated tags link to their crawlable hub; anything else (hand-set
+  // values like "paddock management") falls back to the index.
+  const primaryDef = tagDef(primaryTag);
+  const breadcrumbHref = primaryDef ? `/notes/tag/${primaryDef.slug}` : '/notes';
+  const breadcrumbLabel = primaryDef
+    ? primaryDef.label
+    : primaryTag
+      ? primaryTag.replace(/-/g, ' ').replace(/^\w/, (c) => c.toUpperCase())
+      : 'Notes from the field';
 
   return (
     <>

@@ -193,7 +193,23 @@ export async function middleware(req: NextRequest) {
   const normalised = pathname.length > 1 && pathname.endsWith('/')
     ? pathname.slice(0, -1)
     : pathname;
-  if (LIVE_PATHS.has(normalised)) {
+
+  // Legacy client-filter deep links: /notes?tag=weeds used to filter the
+  // grid post-hydration; the topic now lives at a crawlable hub. 301 so
+  // any old links/bookmarks consolidate onto the hub URL.
+  if (normalised === '/notes') {
+    const tag = req.nextUrl.searchParams.get('tag');
+    if (tag && /^[a-z0-9-]+$/.test(tag)) {
+      return withSeoHeaders(
+        NextResponse.redirect(new URL(`/notes/tag/${tag}`, req.nextUrl.origin).toString(), 301),
+        req,
+      );
+    }
+  }
+
+  // Tag hubs are app-owned (no legacy WP URLs under /notes/tag/) — treat
+  // them like LIVE_PATHS and skip the redirect lookup.
+  if (LIVE_PATHS.has(normalised) || normalised.startsWith('/notes/tag/')) {
     if (normalised !== pathname) {
       const dest = new URL(normalised, req.nextUrl.origin);
       dest.search = req.nextUrl.search;

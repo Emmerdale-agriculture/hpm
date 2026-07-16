@@ -159,6 +159,15 @@ export default function RootLayout({
   return (
     <html lang="en-GB" className={`${tenor.variable} ${dm.variable}`}>
       <body>{children}</body>
+      {/* RSS autodiscovery — a plain <link> (React hoists it into <head>)
+          rather than metadata.alternates, which pages that set their own
+          canonical would shallow-merge away. */}
+      <link
+        rel="alternate"
+        type="application/rss+xml"
+        title="Hampshire Paddock Management — Notes from the field"
+        href={`${siteUrl}/feed.xml`}
+      />
       {/* JSON-LD must render in the initial HTML — use a plain <script>,
           not next/script (which is lazy / client-side only). */}
       <script

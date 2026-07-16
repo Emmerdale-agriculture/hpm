@@ -116,11 +116,13 @@ export function Gallery({ photos }: Props) {
               }}
               aria-label={`View photo ${i + 1}${alt ? ` — ${alt}` : ''}`}
             >
-              {/* Image is decorative inside the button — the button's
-                  aria-label carries the description so AT isn't double-told. */}
+              {/* aria-hidden keeps AT from being double-told (the button's
+                  aria-label carries the description), while the real alt
+                  stays on the img for image search — crawlers read alt,
+                  not the button's label. */}
               <Image
                 src={url}
-                alt=""
+                alt={alt}
                 aria-hidden="true"
                 width={w}
                 height={h}

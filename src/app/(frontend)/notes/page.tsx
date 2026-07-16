@@ -1,16 +1,15 @@
 import type { Metadata } from 'next';
 import Image from 'next/image';
 import Link from 'next/link';
-import { unstable_cache } from 'next/cache';
-import { getPayload } from 'payload';
-import config from '@payload-config';
 
 import { Nav } from '@/components/Nav';
 import { Breadcrumb } from '@/components/Breadcrumb';
 import { Footer } from '@/components/Footer';
 import { mediaUrl } from '@/lib/media';
+import { getNotesData, countByTag } from './data';
 import { NotesClient } from './NotesClient';
-import type { NoteCard } from './types';
+import { FilterBar } from './FilterBar';
+import { formatMonth } from './PostCard';
 import styles from './notes.module.css';
 
 export const metadata: Metadata = {
@@ -18,8 +17,8 @@ export const metadata: Metadata = {
   title: 'Notes from the field',
   description:
     'Practical advice on paddocks, weeds, kit, and seasonal jobs — written from the seat of a tractor.',
-  // canonical '/notes' also folds the crawlable /notes?tag=<slug> breadcrumb
-  // variants (same server HTML) back to the index.
+  // canonical '/notes' also folds any legacy /notes?tag=<slug> URLs (now
+  // 301ed to /notes/tag/<slug> in middleware) back to the index.
   alternates: { canonical: '/notes' },
 };
 
@@ -27,122 +26,10 @@ export const metadata: Metadata = {
 // redeploy. Without this the page was fully static after build.
 export const revalidate = 3600;
 
-// Tag chip set for the index filter. Order is the display order.
-const TAG_OPTIONS: Array<{ slug: string; label: string }> = [
-  { slug: 'topping',      label: 'Topping' },
-  { slug: 'weeds',        label: 'Weeds' },
-  { slug: 'drainage',     label: 'Drainage' },
-  { slug: 'ground-care',  label: 'Ground care' },
-  { slug: 'equipment',    label: 'Equipment' },
-  { slug: 'seasonal',     label: 'Seasonal' },
-  { slug: 'advice',       label: 'Advice' },
-];
-
-const NOTES_HERO_MEDIA_ID = 39; // Burcombe Estate Vinery — wide landscape
-
-type RawPost = {
-  id: number;
-  slug: string;
-  title: string;
-  excerpt?: string | null;
-  publishedAt?: string | null;
-  primaryTag?: string | null;
-  featured?: boolean | null;
-  tags?: Array<{ tag?: string | null }> | null;
-  heroImage?: unknown;
-};
-
-function project(p: RawPost): NoteCard {
-  const heroMedia = p.heroImage as Parameters<typeof mediaUrl>[0];
-  const heroSrc = mediaUrl(heroMedia, 'large') ?? mediaUrl(heroMedia);
-  const heroAlt =
-    (typeof heroMedia === 'object' && heroMedia?.alt) || p.title;
-  const heroWidth =
-    typeof heroMedia === 'object' && heroMedia && 'width' in heroMedia
-      ? (heroMedia as { width?: number | null }).width ?? null
-      : null;
-  const heroHeight =
-    typeof heroMedia === 'object' && heroMedia && 'height' in heroMedia
-      ? (heroMedia as { height?: number | null }).height ?? null
-      : null;
-
-  return {
-    id: p.id,
-    slug: p.slug,
-    title: p.title,
-    excerpt: p.excerpt ?? null,
-    publishedAt: p.publishedAt ?? null,
-    primaryTag: p.primaryTag ?? null,
-    tags: (p.tags ?? [])
-      .map((t) => t.tag)
-      .filter((t): t is string => typeof t === 'string' && t.length > 0),
-    hero: heroSrc
-      ? { url: heroSrc, alt: heroAlt, width: heroWidth, height: heroHeight }
-      : null,
-  };
-}
-
-const getNotesData = unstable_cache(
-  async () => {
-    const payload = await getPayload({ config });
-
-    const [postsRes, heroMedia] = await Promise.all([
-      payload.find({
-        collection: 'posts',
-        where: { _status: { equals: 'published' } },
-        limit: 0,
-        sort: '-publishedAt',
-        depth: 1,
-        // Card fields only — exclude the heavy `content` blocks for every
-        // published post. heroImage still hydrates at depth:1.
-        select: {
-          slug: true,
-          title: true,
-          excerpt: true,
-          publishedAt: true,
-          primaryTag: true,
-          featured: true,
-          tags: true,
-          heroImage: true,
-        },
-      }),
-      payload
-        .findByID({ collection: 'media', id: NOTES_HERO_MEDIA_ID, depth: 0 })
-        .catch(() => null),
-    ]);
-
-    const rawDocs = postsRes.docs as RawPost[];
-    const all = rawDocs.map(project);
-
-    // Featured: explicit flag wins (results are sorted newest-first, so the
-    // first flagged post is the most recent), else fall back to most recent.
-    // Derived in-memory from the single query above — no extra round-trip.
-    let featured: NoteCard | null = null;
-    const featuredRaw = rawDocs.find((p) => p.featured === true);
-    if (featuredRaw) {
-      featured = project(featuredRaw);
-    } else if (all.length > 0) {
-      featured = all[0];
-    }
-
-    // Index grid excludes the featured post (avoid duplication).
-    const grid = featured ? all.filter((p) => p.id !== featured!.id) : all;
-
-    return { featured, grid, heroMedia };
-  },
-  ['notes-data'],
-  { revalidate: 300, tags: ['posts', 'media'] },
-);
-
-function formatMonth(dateStr: string | null): string {
-  if (!dateStr) return '';
-  const d = new Date(dateStr);
-  if (Number.isNaN(d.getTime())) return '';
-  return d.toLocaleDateString('en-GB', { month: 'long', year: 'numeric' });
-}
-
 export default async function NotesIndexPage() {
   const { featured, grid, heroMedia } = await getNotesData();
+  const all = [...(featured ? [featured] : []), ...grid];
+  const counts = countByTag(all);
 
   const heroUrl =
     mediaUrl(heroMedia as Parameters<typeof mediaUrl>[0], 'large') ??
@@ -217,9 +104,10 @@ export default async function NotesIndexPage() {
         </section>
       )}
 
-      {/* ===== FILTER + GRID + LOAD MORE (client-enhanced; first page of
-           cards renders in server HTML) ===== */}
-      <NotesClient posts={grid} tagOptions={TAG_OPTIONS} />
+      {/* ===== TOPIC LINKS + GRID + LOAD MORE (first page of cards renders
+           in server HTML; chips link to crawlable /notes/tag/* hubs) ===== */}
+      <FilterBar counts={counts} active={null} shownCount={grid.length} />
+      <NotesClient posts={grid} />
 
       {/* ===== FULL ARCHIVE (server-rendered) =====
            Every published post gets a crawlable link from /notes — the
@@ -227,7 +115,7 @@ export default async function NotesIndexPage() {
       <section className={styles.archive} aria-label="All notes">
         <h2 className={styles.archiveTitle}>All notes</h2>
         <ul className={styles.archiveList}>
-          {[...(featured ? [featured] : []), ...grid].map((p) => (
+          {all.map((p) => (
             <li key={p.id}>
               <Link href={`/notes/${p.slug}`}>{p.title}</Link>
               {p.publishedAt && (

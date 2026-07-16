@@ -35,14 +35,13 @@ const FORCE = process.argv.includes('--force');
 // the service-CTA panel. Order: most-specific service-mapped tag first,
 // generic informational tags last.
 const TAXONOMY = [
-  { slug: 'drainage',     keywords: ['drainage', 'mole plough', 'subsoil', 'standing water', 'ditch', 'waterlogged', 'pugged'] },
-  { slug: 'topping',      keywords: ['topping', 'topper', 'flail mower'] },
-  { slug: 'weeds',        keywords: ['weed', 'weeds', 'ragwort', 'docks', 'thistle', 'thistles', 'herbicide', 'herbicides'] },
-  { slug: 'ground-care',  keywords: ['harrow', 'harrowing', 'roll', 'rolling', 'overseed', 'overseeding', 'fertiliser', 'fertilizer', 'reseed', 'aeration', 'aerate', 'compaction', 'rotavating', 'rotavate'] },
-  { slug: 'equipment',    keywords: ['john deere', 'kuhn', 'mcconnel', 'tractor', 'flail', 'wessex', 'deleks', 'aercore', 'pa3430', 'verge flail'] },
-  { slug: 'seasonal',     keywords: ['winter', 'spring', 'summer', 'autumn', 'february', 'march', 'april', 'may', 'june', 'july', 'august', 'september', 'october', 'november', 'december'] },
-  { slug: 'advice',       keywords: ['guide', 'tips', 'how to', 'advice', 'should', 'when to', 'choosing', 'recognise', 'spotting'] },
-  { slug: 'kit',          keywords: ['licensed', 'license', 'licence', 'certificate', 'certified', 'insurance', 'public liability'] },
+  { slug: 'drainage',     keywords: ['drainage', 'mole plough', 'subsoil', 'standing water', 'ditch', 'waterlogged', 'pugged', 'paddocks dry', 'swamp', 'swamps'] },
+  { slug: 'topping',      keywords: ['topping', 'topper', 'flail mower', 'mowing'] },
+  { slug: 'weeds',        keywords: ['weed', 'weeds', 'ragwort', 'docks', 'thistle', 'thistles', 'herbicide', 'herbicides', 'buttercup', 'buttercups', 'spray', 'spraying', 'nozzle', 'nozzles', 'licensed'] },
+  { slug: 'ground-care',  keywords: ['harrow', 'harrowing', 'roll', 'rolling', 'overseed', 'overseeding', 'fertiliser', 'fertilizer', 'reseed', 'aeration', 'aerate', 'compaction', 'compacted', 'rotavating', 'rotavate', 'lime', 'plough', 'ploughing', 'wildflower', 'meadow', 'grass', 'soil', 'seeding', 'seeder'] },
+  { slug: 'equipment',    keywords: ['john deere', 'kuhn', 'mcconnel', 'tractor', 'flail', 'wessex', 'deleks', 'aercore', 'pa3430', 'verge flail', 'chapman', 'ryetech', 'sweeper', 'hedge cutter', 'stone burier', 'machinery'] },
+  { slug: 'seasonal',     keywords: ['winter', 'spring', 'summer', 'autumn', 'year-round', 'year round'] },
+  { slug: 'advice',       keywords: ['guide', 'tips', 'how to', 'advice', 'should', 'when to', 'choosing', 'recognise', 'spotting', 'challenges', 'signs'] },
 ];
 
 function hasKeyword(haystack, kw) {
@@ -56,19 +55,26 @@ function hasKeyword(haystack, kw) {
 const TAXONOMY_SLUGS = new Set(TAXONOMY.map((t) => t.slug));
 
 function matchTagsForPost(post) {
-  const haystack = [
-    post.title ?? '',
+  // Title matches outrank excerpt/legacy-tag matches for primaryTag — an
+  // incidental "weed" in the excerpt must not steal the CTA from what the
+  // post is actually about.
+  const title = (post.title ?? '').toLowerCase();
+  const rest = [
     post.excerpt ?? '',
     ...(post.tags ?? []).map((t) => (typeof t === 'object' ? t.tag : t)),
   ]
     .join(' ')
     .toLowerCase();
 
-  const matched = [];
+  const fromTitle = [];
+  const fromRest = [];
   for (const t of TAXONOMY) {
-    if (t.keywords.some((k) => hasKeyword(haystack, k))) matched.push(t.slug);
+    if (t.keywords.some((k) => hasKeyword(title, k))) fromTitle.push(t.slug);
+    else if (t.keywords.some((k) => hasKeyword(rest, k))) fromRest.push(t.slug);
   }
-  return matched;
+  // Title matches first (in taxonomy priority order), then the rest —
+  // matched[0] becomes primaryTag.
+  return [...fromTitle, ...fromRest];
 }
 
 const payload = await getPayload({ config });
@@ -82,12 +88,34 @@ let updated = 0;
 let skipped = 0;
 
 for (const post of res.docs) {
+  const slug = post.slug ?? `id-${post.id}`;
+
+  // Commentary posts are quarantined off-topic content — they must not
+  // surface in the paddock tag hubs, so strip any curated tags they have.
+  if (post.category === 'commentary') {
+    const hasTags = (post.tags ?? []).length > 0 || post.primaryTag;
+    if (!hasTags) {
+      skipped++;
+      continue;
+    }
+    console.log(`✕ [${post.id}] ${slug.slice(0, 40).padEnd(40)} commentary — clearing tags`);
+    if (EXECUTE) {
+      await payload.update({
+        collection: 'posts',
+        id: post.id,
+        data: { tags: [], primaryTag: null },
+      });
+    }
+    updated++;
+    continue;
+  }
+
   const existing = (post.tags ?? []).map((t) => (typeof t === 'object' ? t.tag : t));
   const alreadyCurated =
     existing.length > 0 && existing.every((t) => TAXONOMY_SLUGS.has(t));
 
   if (alreadyCurated && !FORCE) {
-    console.log(`= [${post.id}] ${post.slug.slice(0, 40).padEnd(40)} already curated [${existing.join(',')}]`);
+    console.log(`= [${post.id}] ${slug.slice(0, 40).padEnd(40)} already curated [${existing.join(',')}]`);
     skipped++;
     continue;
   }
@@ -98,12 +126,12 @@ for (const post of res.docs) {
   if (matched.length === 0) {
     // Don't wipe a post's existing tags just because the heuristic
     // didn't recognise any. Leave it alone for Tom to tag manually.
-    console.log(`? [${post.id}] ${post.slug.slice(0, 40).padEnd(40)} no taxonomy match — leaving tags untouched`);
+    console.log(`? [${post.id}] ${slug.slice(0, 40).padEnd(40)} no taxonomy match — leaving tags untouched`);
     skipped++;
     continue;
   }
 
-  console.log(`→ [${post.id}] ${post.slug.slice(0, 40).padEnd(40)} [${matched.join(',')}] primary=${primary}`);
+  console.log(`→ [${post.id}] ${slug.slice(0, 40).padEnd(40)} [${matched.join(',')}] primary=${primary}`);
 
   if (EXECUTE) {
     await payload.update({

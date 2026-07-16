@@ -8,6 +8,9 @@ import { ServiceHero } from '@/components/ServiceHero';
 import { ServiceBody } from '@/components/ServiceBody';
 import { EquipmentCard, AtAGlanceCard } from '@/components/AsideCards';
 import { RelatedServices } from '@/components/RelatedServices';
+import { RelatedNotes, type RelatedNote } from '@/components/RelatedNotes';
+import { tagsForService } from '@/lib/tag-service-map';
+import { tagDef } from '@/lib/tags';
 import { StickyQuoteCta } from '@/components/StickyQuoteCta';
 import { CtaBlock } from '@/components/CtaBlock';
 import { Footer } from '@/components/Footer';
@@ -138,6 +141,37 @@ export default async function ServicePage({ params }: { params: Promise<Params> 
     related = fallback.docs as unknown as RelatedLike[];
   }
 
+  // Related notes: posts tagged with this service's topics, newest first.
+  // Links every service page back into /notes/* — the post→service CTA
+  // already covers the other direction.
+  const relatedTags = tagsForService(svc.slug);
+  type RelatedNoteDoc = RelatedNote & { tags?: Array<{ tag?: string | null }> | null };
+  let relatedNotes: RelatedNoteDoc[] = [];
+  if (relatedTags.length > 0) {
+    try {
+      const notesRes = await payload.find({
+        collection: 'posts',
+        where: {
+          _status: { equals: 'published' },
+          'tags.tag': { in: relatedTags },
+        },
+        limit: 3,
+        sort: '-publishedAt',
+        depth: 0,
+        select: { slug: true, title: true, excerpt: true, publishedAt: true, tags: true },
+      });
+      relatedNotes = notesRes.docs as unknown as RelatedNoteDoc[];
+    } catch (err) {
+      console.error('[services/[slug]] related-notes query failed:', err);
+    }
+  }
+  // Hub link: the first mapped tag that actually appears on a matched post,
+  // so we never link a hub that would 404 for having no posts.
+  const matchedTags = new Set(
+    relatedNotes.flatMap((n) => (n.tags ?? []).map((t) => t.tag).filter(Boolean)),
+  );
+  const hubDef = tagDef(relatedTags.find((t) => matchedTags.has(t)) ?? null);
+
   // Body content — pull image refs so we can render <figure> inside richText
   const content = svc.content as unknown[] | null | undefined;
   const uploadIds: number[] = [];
@@ -230,6 +264,11 @@ export default async function ServicePage({ params }: { params: Promise<Params> 
             />
           </>
         }
+      />
+      <RelatedNotes
+        notes={relatedNotes}
+        hubTag={hubDef ? hubDef.slug : null}
+        hubLabel={hubDef ? hubDef.label : null}
       />
       <RelatedServices
         services={related.slice(0, 3).map((r) => ({

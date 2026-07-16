@@ -182,6 +182,8 @@
 }
 .chip {
   font-family: inherit;
+  text-decoration: none;
+  display: inline-block;
   font-size: 13px;
   font-weight: 500;
   padding: 7px 16px;

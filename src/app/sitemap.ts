@@ -1,6 +1,7 @@
 import type { MetadataRoute } from 'next';
 import { getPayload } from 'payload';
 import config from '@payload-config';
+import { CURATED_TAGS } from '@/lib/tags';
 
 const SITE_URL = (
   process.env.NEXT_PUBLIC_SITE_URL || 'https://hampshirepaddockmanagement.com'
@@ -54,7 +55,7 @@ export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
         },
         limit: 1000,
         depth: 0,
-        select: { slug: true, updatedAt: true },
+        select: { slug: true, updatedAt: true, tags: true },
       }),
     ]);
 
@@ -78,7 +79,31 @@ export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
         priority: 0.6,
       }));
 
-    dynamicPages = [...servicePages, ...postPages];
+    // Tag hubs (/notes/tag/*): only advertise hubs with enough posts to be
+    // a real landing page — thin 1-2 post hubs stay reachable via the chip
+    // links but aren't put in front of the crawler.
+    const tagLastMod = new Map<string, Date>();
+    const tagCount = new Map<string, number>();
+    for (const p of posts.docs) {
+      const tags = (p.tags ?? []) as Array<{ tag?: string | null }>;
+      const updated = p.updatedAt ? new Date(p.updatedAt) : now;
+      for (const t of tags) {
+        if (!t.tag) continue;
+        tagCount.set(t.tag, (tagCount.get(t.tag) ?? 0) + 1);
+        const prev = tagLastMod.get(t.tag);
+        if (!prev || updated > prev) tagLastMod.set(t.tag, updated);
+      }
+    }
+    const tagHubPages: MetadataRoute.Sitemap = CURATED_TAGS
+      .filter((t) => (tagCount.get(t.slug) ?? 0) >= 3)
+      .map((t) => ({
+        url: `${SITE_URL}/notes/tag/${t.slug}`,
+        lastModified: tagLastMod.get(t.slug) ?? now,
+        changeFrequency: 'weekly' as const,
+        priority: 0.5,
+      }));
+
+    dynamicPages = [...servicePages, ...postPages, ...tagHubPages];
   } catch (err) {
     console.error('[sitemap] DB query failed — serving static routes only:', err);
   }
