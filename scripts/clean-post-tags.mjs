@@ -38,6 +38,7 @@ const TAXONOMY = [
   { slug: 'drainage',     keywords: ['drainage', 'mole plough', 'subsoil', 'standing water', 'ditch', 'waterlogged', 'pugged', 'paddocks dry', 'swamp', 'swamps'] },
   { slug: 'topping',      keywords: ['topping', 'topper', 'flail mower', 'mowing'] },
   { slug: 'weeds',        keywords: ['weed', 'weeds', 'ragwort', 'docks', 'thistle', 'thistles', 'herbicide', 'herbicides', 'buttercup', 'buttercups', 'spray', 'spraying', 'nozzle', 'nozzles', 'licensed'] },
+  { slug: 'hedges',       keywords: ['hedge', 'hedges', 'hedgerow', 'hedge cutter', 'hedge cutting'] },
   { slug: 'ground-care',  keywords: ['harrow', 'harrowing', 'roll', 'rolling', 'overseed', 'overseeding', 'fertiliser', 'fertilizer', 'reseed', 'aeration', 'aerate', 'compaction', 'compacted', 'rotavating', 'rotavate', 'lime', 'plough', 'ploughing', 'wildflower', 'meadow', 'grass', 'soil', 'seeding', 'seeder'] },
   { slug: 'equipment',    keywords: ['john deere', 'kuhn', 'mcconnel', 'tractor', 'flail', 'wessex', 'deleks', 'aercore', 'pa3430', 'verge flail', 'chapman', 'ryetech', 'sweeper', 'hedge cutter', 'stone burier', 'machinery'] },
   { slug: 'seasonal',     keywords: ['winter', 'spring', 'summer', 'autumn', 'year-round', 'year round'] },

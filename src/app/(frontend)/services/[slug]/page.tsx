@@ -154,6 +154,9 @@ export default async function ServicePage({ params }: { params: Promise<Params> 
         where: {
           _status: { equals: 'published' },
           'tags.tag': { in: relatedTags },
+          // Quarantined off-topic posts must not surface on service pages,
+          // even if a stray tag survives on one.
+          category: { not_equals: 'commentary' },
         },
         limit: 3,
         sort: '-publishedAt',

@@ -19,6 +19,7 @@ export const tagToService: Record<string, TagService | null> = {
   weeds:         { slug: 'weed-control',        label: 'Weed control',     verb: 'tackle weeds' },
   drainage:      { slug: 'mole-ploughing',      label: 'Mole ploughing',   verb: 'sort drainage' },
   'ground-care': { slug: 'harrowing',           label: 'Harrowing',        verb: 'look after paddocks' },
+  hedges:        { slug: 'hedge-cutting',       label: 'Hedge cutting',    verb: 'cut hedges' },
   // Informational tags — no service CTA.
   equipment:     null,
   seasonal:      null,
@@ -38,6 +39,7 @@ export function serviceForTag(tag: string | null | undefined): TagService | null
  * posts at all). Order matters: posts matching an earlier tag rank first.
  */
 export const serviceToTags: Record<string, string[]> = {
+  'hedge-cutting':          ['hedges', 'equipment'],
   'paddock-topping':        ['topping', 'ground-care'],
   'flailing':               ['topping', 'equipment'],
   'flail-collecting':       ['topping', 'equipment'],

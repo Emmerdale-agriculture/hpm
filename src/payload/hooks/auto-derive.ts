@@ -82,19 +82,20 @@ type AutoDeriveOptions = {
   tags?: boolean;
 };
 
-// Curated tag taxonomy — must stay in sync with the description on the
-// `tags` field in posts.ts and with the filter chips on /notes.
-// Each entry is a slug paired with keywords/synonyms to look for in the
-// post's title + body. Whole-word, case-insensitive match.
+// Curated tag taxonomy — slugs must stay in sync with CURATED_TAGS in
+// src/lib/tags.ts (which drives the /notes chips and /notes/tag/* hubs)
+// and with scripts/clean-post-tags.mjs. Each entry is a slug paired with
+// keywords/synonyms to look for in the post's title + body. Whole-word,
+// case-insensitive match.
 const TAG_TAXONOMY: Array<{ tag: string; keywords: string[] }> = [
   { tag: 'topping',     keywords: ['topping', 'topped', 'mow', 'mowing', 'mowed', 'mower'] },
   { tag: 'weeds',       keywords: ['weed', 'weeds', 'weeding', 'ragwort', 'thistle', 'thistles', 'dock', 'docks', 'nettle', 'nettles', 'buttercup', 'buttercups'] },
+  { tag: 'hedges',      keywords: ['hedge', 'hedges', 'hedgerow', 'hedgerows'] },
   { tag: 'seasonal',    keywords: ['spring', 'summer', 'autumn', 'winter', 'seasonal'] },
   { tag: 'equipment',   keywords: ['tractor', 'harrow', 'harrows', 'roller', 'rollers', 'sprayer', 'sprayers', 'machinery', 'equipment', 'attachment', 'attachments'] },
   { tag: 'ground-care', keywords: ['paddock', 'paddocks', 'turf', 'sward', 'pasture', 'grazing'] },
   { tag: 'advice',      keywords: ['guide', 'advice', 'tip', 'tips', 'recommend', 'recommended', 'how to', 'when to', 'should you', 'do you'] },
   { tag: 'drainage',    keywords: ['drainage', 'drain', 'drains', 'waterlogged', 'flooded', 'flooding', 'muddy', 'wet ground', 'wet soil'] },
-  { tag: 'kit',         keywords: ['kit'] },
 ];
 
 function deriveTags(plain: string, title: string): string[] {
@@ -155,8 +156,11 @@ export const autoDerive =
       else if (title) data.shortDescription = truncate(title, 300);
     }
 
-    // Post tags — fall back to capitalised phrases from title/content
-    if (opts.tags) {
+    // Post tags — fall back to taxonomy keywords from title/content.
+    // Commentary posts are deliberately untagged (quarantined off-topic
+    // content must not surface in the /notes tag hubs or service
+    // related-notes) — deriving here would silently undo any clearing.
+    if (opts.tags && data.category !== 'commentary') {
       const existing = Array.isArray(data.tags) ? (data.tags as Array<{ tag?: string }>) : [];
       if (existing.length === 0 && (title || plain)) {
         const derived = deriveTags(plain, title);

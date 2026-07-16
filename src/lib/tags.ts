@@ -52,6 +52,13 @@ export const CURATED_TAGS: TagDef[] = [
       'The machinery behind the work — compact tractors, flail mowers, collectors and attachments, reviewed from real jobs.',
   },
   {
+    slug: 'hedges',
+    label: 'Hedges',
+    metaTitle: 'Hedge cutting & care notes',
+    description:
+      'Hedge cutting, trimming and hedge health in Hampshire — when to cut, what the law allows, and spotting problems early.',
+  },
+  {
     slug: 'seasonal',
     label: 'Seasonal',
     metaTitle: 'Seasonal paddock care notes',
