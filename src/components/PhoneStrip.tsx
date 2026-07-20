@@ -14,7 +14,16 @@ export function PhoneStrip() {
         <span className={styles.label}>Hampshire &amp; surrounding counties</span>
       </div>
       <div className={styles.coverage}>
-        Covering Hampshire, Wiltshire, Berkshire, Sussex, Dorset and Surrey
+        Covering Hampshire, Wiltshire, Berkshire, Sussex, Dorset and Surrey &mdash; and
+        nationally through our contractor marketplace,{' '}
+        <a
+          href="https://emmerdaleagriculture.com/"
+          className={styles.coverageLink}
+          target="_blank"
+          rel="noopener"
+        >
+          Emmerdale Agriculture
+        </a>
       </div>
     </section>
   );

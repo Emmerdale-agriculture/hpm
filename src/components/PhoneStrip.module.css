@@ -23,6 +23,14 @@
   color: rgba(23, 51, 13, 0.8);
 }
 
+.coverageLink {
+  color: inherit;
+  font-weight: 600;
+  text-decoration: underline;
+  text-underline-offset: 2px;
+}
+.coverageLink:hover { color: var(--jd-green-deep); }
+
 .label {
   text-transform: uppercase;
   letter-spacing: 0.18em;
