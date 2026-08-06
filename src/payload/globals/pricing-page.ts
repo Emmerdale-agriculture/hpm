@@ -100,13 +100,13 @@ export const PricingPage: GlobalConfig = {
                 {
                   title: 'Hourly',
                   description:
-                    'Topping, rolling, rotavating, hedge cutting, soil aeration, dung sweeping. You only pay for time on the ground.',
+                    'Topping, rolling, hedge cutting, soil aeration, dung sweeping. You only pay for time on the ground.',
                   tagline: 'Fairest for variable jobs',
                 },
                 {
                   title: 'Per acre',
                   description:
-                    'Harrowing, overseeding and spraying. Pure ground-coverage work where acreage is the honest unit.',
+                    'Rotavating, harrowing, overseeding, spraying, weed control and ripping. Pure ground-coverage work where acreage is the honest unit.',
                   tagline: 'Predictable for big jobs',
                 },
                 {
@@ -179,18 +179,19 @@ export const PricingPage: GlobalConfig = {
               defaultValue: [
                 { name: 'Paddock topping', pricingType: 'hourly' },
                 { name: 'Paddock rolling', pricingType: 'hourly' },
-                { name: 'Field rotavating', pricingType: 'hourly' },
                 { name: 'Hedge cutting', pricingType: 'hourly' },
                 { name: 'Soil aeration', pricingType: 'hourly' },
                 { name: 'Dung sweeping', pricingType: 'hourly' },
+                { name: 'Field rotavating', pricingType: 'perAcre' },
                 { name: 'Field harrowing', pricingType: 'perAcre' },
                 { name: 'Overseeding', pricingType: 'perAcre' },
                 { name: 'Spraying', pricingType: 'perAcre' },
-                { name: 'Fertiliser application', pricingType: 'dayRate' },
                 {
                   name: 'Weed control (ragwort, docks, thistles)',
-                  pricingType: 'dayRate',
+                  pricingType: 'perAcre',
                 },
+                { name: 'Field ripping', pricingType: 'perAcre' },
+                { name: 'Fertiliser application', pricingType: 'dayRate' },
                 {
                   name: 'Mole ploughing & drainage',
                   pricingType: 'dayRate',
