@@ -9,6 +9,7 @@ import { Nav } from '@/components/Nav';
 import { Footer } from '@/components/Footer';
 import { Breadcrumb } from '@/components/Breadcrumb';
 import { TikTokEmbed } from '@/components/TikTokEmbed';
+import { FaqAccordion, type FaqItem } from '@/components/paddock-maintenance/FaqAccordion';
 import { mediaUrl } from '@/lib/media';
 import { SITE_PHONE, SITE_PHONE_TEL } from '@/lib/site';
 import { jsonLd } from '@/lib/jsonld';
@@ -29,8 +30,9 @@ export async function generateMetadata(): Promise<Metadata> {
     mediaUrl(hero as Parameters<typeof mediaUrl>[0]);
   return {
     title: { absolute: 'Indexable Carbide-Tipped Mole Plough | Hampshire Paddock Management' },
+    // ~155 chars — Google truncates around 160, so it must end cleanly.
     description:
-      'A world-first agricultural mole plough with an indexable, replaceable carbide cutting tip and Hardox wear protection — designed for hard, compacted ground a conventional subsoiler struggles with. Demonstrations available.',
+      'A world-first mole plough with an indexable, replaceable carbide cutting tip and Hardox protection — built for hard, compacted ground. Book a demonstration.',
     alternates: { canonical: '/carbide-mole-plough' },
     openGraph: {
       title: 'Indexable Carbide-Tipped Mole Plough',
@@ -71,6 +73,29 @@ const TIKTOK_VIDEO_ID = '7671307871564369174';
 const TIKTOK_USERNAME = 'emmerdale.agricul';
 const TIKTOK_CAPTION =
   'Testing out our world first carbide tipped mole plough in some super hard ground!';
+const TIKTOK_URL = `https://www.tiktok.com/@${TIKTOK_USERNAME}/video/${TIKTOK_VIDEO_ID}`;
+
+// TikTok video ids encode their creation time in the top 32 bits.
+const TIKTOK_UPLOAD_DATE = new Date(
+  Number(BigInt(TIKTOK_VIDEO_ID) >> 32n) * 1000,
+).toISOString();
+
+// Thumbnail for the VideoObject schema. TikTok CDN thumbnail URLs carry
+// signed expiry tokens, so they can't be hardcoded — refetch daily via
+// oEmbed and simply omit the VideoObject if TikTok is unreachable.
+async function getTikTokThumbnail(): Promise<string | null> {
+  try {
+    const res = await fetch(
+      `https://www.tiktok.com/oembed?url=${encodeURIComponent(TIKTOK_URL)}`,
+      { next: { revalidate: 86400 } },
+    );
+    if (!res.ok) return null;
+    const data = (await res.json()) as { thumbnail_url?: string };
+    return data.thumbnail_url ?? null;
+  } catch {
+    return null;
+  }
+}
 
 const FEATURES = [
   {
@@ -99,11 +124,39 @@ const FEATURES = [
   },
 ];
 
+const FAQS: FaqItem[] = [
+  {
+    q: "What's the difference between a mole plough and a subsoiler?",
+    a: "They're close relatives — both pull a steel leg through the ground below the surface. A subsoiler is about lifting and shattering compacted layers; a mole plough tows a bullet-shaped foot that forms an unlined drainage channel as it goes. Traditionally both rely on the same thing at the business end: a slab of steel with an edge ground onto it. That leading edge is the part we've redesigned.",
+  },
+  {
+    q: 'Why carbide instead of steel?',
+    a: "Tungsten carbide is dramatically harder than even hardened steel, so it holds its engineered cutting geometry as it wears instead of rounding off into a blunt edge. Concentrating the cutting action at a purpose-designed carbide tip means the leg isn't fighting its way through the ground — which reduces draft force, wheel slip, and fuel burn in hard conditions.",
+  },
+  {
+    q: "What does 'indexable' mean?",
+    a: "It's a term from modern cutting-tool engineering: the tip can be rotated to present a fresh cutting edge as it wears, and removed and replaced entirely when it's done. You replace the inexpensive cutting component, not the main assembly.",
+  },
+  {
+    q: 'Can I see it working before buying one?',
+    a: "Yes — that's exactly what we'd suggest. Get in touch and we'll arrange a demonstration in real ground, ideally your own, so you can see what it does in the conditions you actually deal with.",
+  },
+  {
+    q: 'Do you sell the mole plough or just run it yourselves?',
+    a: 'Both. We run mole ploughing as a contracting service across Hampshire and the surrounding counties, and the Indexable Carbide-Tipped Mole Plough is available to purchase. Either way, start with a phone call or the contact form.',
+  },
+];
+
 export default async function CarbideMolePloughPage() {
-  const heroMedia = await getHeroPhoto();
+  const [heroMedia, tiktokThumbnail] = await Promise.all([
+    getHeroPhoto(),
+    getTikTokThumbnail(),
+  ]);
   const heroUrl = mediaUrl(heroMedia, 'hero') ?? mediaUrl(heroMedia);
+  // Deliberate override of the CMS alt ("Mole ploughing") — describe what the
+  // photo shows in this page's context until dedicated product shots exist.
   const heroAlt =
-    (typeof heroMedia === 'object' && heroMedia?.alt) || 'Mole ploughing in Hampshire';
+    'Tractor mole ploughing hard, compacted ground — the conditions the carbide-tipped mole plough is designed for';
 
   // Product JSON-LD. The brand/manufacturer references the sitewide
   // LocalBusiness @id (defined in the root layout) so Google treats it as
@@ -111,12 +164,15 @@ export default async function CarbideMolePloughPage() {
   const siteUrl = (
     process.env.NEXT_PUBLIC_SITE_URL || 'https://hampshirepaddockmanagement.com'
   ).replace(/\/$/, '');
+  const productImage =
+    mediaUrl(heroMedia as Parameters<typeof mediaUrl>[0], 'large') ?? heroUrl;
   const productJsonLd = {
     '@context': 'https://schema.org',
     '@type': 'Product',
     name: 'Indexable Carbide-Tipped Mole Plough',
     description:
       'Agricultural mole plough with an indexable, removable and replaceable carbide cutting tip and Hardox wear protection in high-draft and high-abrasion areas. Designed for hard and heavily compacted soils.',
+    ...(productImage ? { image: productImage } : {}),
     brand: { '@type': 'Brand', name: 'Emmerdale Agriculture' },
     manufacturer: {
       '@type': 'LocalBusiness',
@@ -128,6 +184,32 @@ export default async function CarbideMolePloughPage() {
     url: `${siteUrl}/carbide-mole-plough`,
   };
 
+  // Video rich-result eligibility needs a thumbnail, so only emit the
+  // VideoObject when the oEmbed lookup succeeded.
+  const videoJsonLd = tiktokThumbnail
+    ? {
+        '@context': 'https://schema.org',
+        '@type': 'VideoObject',
+        name: 'Carbide-tipped mole plough working in hard ground',
+        description: TIKTOK_CAPTION,
+        thumbnailUrl: tiktokThumbnail,
+        uploadDate: TIKTOK_UPLOAD_DATE,
+        contentUrl: TIKTOK_URL,
+        embedUrl: `https://www.tiktok.com/embed/v2/${TIKTOK_VIDEO_ID}`,
+        publisher: { '@type': 'Organization', name: 'Emmerdale Agriculture' },
+      }
+    : null;
+
+  const faqJsonLd = {
+    '@context': 'https://schema.org',
+    '@type': 'FAQPage',
+    mainEntity: FAQS.map((f) => ({
+      '@type': 'Question',
+      name: f.q,
+      acceptedAnswer: { '@type': 'Answer', text: f.a },
+    })),
+  };
+
   return (
     <>
       {/* JSON-LD must be in the initial HTML for SEO crawlers — use a plain
@@ -135,6 +217,16 @@ export default async function CarbideMolePloughPage() {
       <script
         type="application/ld+json"
         dangerouslySetInnerHTML={{ __html: jsonLd(productJsonLd) }}
+      />
+      {videoJsonLd && (
+        <script
+          type="application/ld+json"
+          dangerouslySetInnerHTML={{ __html: jsonLd(videoJsonLd) }}
+        />
+      )}
+      <script
+        type="application/ld+json"
+        dangerouslySetInnerHTML={{ __html: jsonLd(faqJsonLd) }}
       />
 
       {/* HERO */}
@@ -275,6 +367,15 @@ export default async function CarbideMolePloughPage() {
           <Link href="/services/mole-ploughing">mole ploughing</Link> for drainage work on
           wet fields.
         </p>
+      </section>
+
+      {/* FAQ */}
+      <section className={styles.faq}>
+        <p className={styles.sectionEyebrow}>Common questions</p>
+        <h2 className={styles.sectionHeading}>
+          People <em>often ask</em>
+        </h2>
+        <FaqAccordion items={FAQS} />
       </section>
 
       {/* CTA BAND */}

@@ -115,6 +115,7 @@ const SEASONS: Season[] = [
     lead: "Heavy ground work and structural jobs while grass isn't growing.",
     jobs: [
       { text: 'Rotavating', href: '/services/rotavating', after: ' tired sections for renovation' },
+      { text: 'Ripping compacted ground', href: '/carbide-mole-plough', after: ' with our carbide-tipped mole plough' },
       { text: 'Stone burying', href: '/services/stone-burying', after: ' on rough ground' },
       { text: 'Land & ditch clearance', href: '/services/land-ditch-clearance' },
       { text: "Planning the year's spray and fertiliser programme" },

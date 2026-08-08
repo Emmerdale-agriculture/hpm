@@ -1,6 +1,8 @@
 .embed {
   max-width: 605px;
-  min-width: 325px;
+  /* TikTok's recommended 325px floor, but never wider than the container —
+     a hard 325px overflows 320px-wide phones. */
+  min-width: min(325px, 100%);
   margin: 0 auto;
   border: 0;
   padding: 0;

@@ -40,6 +40,10 @@ const nextConfig = {
     deviceSizes: [640, 828, 1080, 1920],
     // Must not overlap deviceSizes — 640 here duplicated the 640w srcset entry.
     imageSizes: [256, 384],
+    // Optimised variants otherwise inherit Supabase's max-age=3600, making
+    // browsers revalidate every hour. Media files are effectively immutable
+    // (re-uploads get new filenames), so cache for a day.
+    minimumCacheTTL: 86400,
   },
 
   // /quote serves the contact page without a redirect — both URLs are
