@@ -1,0 +1,376 @@
+/* ===== HERO ===== */
+.hero {
+  position: relative;
+  min-height: 56vh;
+  display: flex;
+  align-items: flex-end;
+  color: #fff;
+  overflow: hidden;
+  isolation: isolate;
+}
+
+.heroPhoto {
+  position: absolute;
+  inset: 0;
+  background: var(--jd-green-dark);
+  z-index: -2;
+}
+
+.heroGradient {
+  position: absolute;
+  inset: 0;
+  z-index: -1;
+  background: linear-gradient(
+    135deg,
+    rgba(23, 51, 13, 0.6) 0%,
+    rgba(36, 80, 24, 0.3) 50%,
+    rgba(23, 51, 13, 0.55) 100%
+  );
+  pointer-events: none;
+}
+
+.heroInner {
+  width: 100%;
+  max-width: 1400px;
+  margin: 0 auto;
+  padding: 7rem 3rem 4rem;
+}
+
+.eyebrow {
+  font-size: 11px;
+  letter-spacing: 0.22em;
+  text-transform: uppercase;
+  color: var(--jd-yellow);
+  margin: 0.75rem 0 1rem;
+  font-weight: 500;
+}
+
+.h1 {
+  font-family: var(--font-display-stack);
+  font-size: clamp(40px, 6vw, 76px);
+  font-weight: 400;
+  letter-spacing: -0.01em;
+  line-height: 1.05;
+  margin: 0 0 1.25rem;
+  max-width: 980px;
+  color: #fff;
+}
+
+.h1 em {
+  font-family: var(--font-serif);
+  font-style: italic;
+  color: var(--jd-yellow);
+}
+
+.heroLead {
+  font-size: 19px;
+  max-width: 640px;
+  opacity: 0.92;
+  line-height: 1.5;
+  margin: 0;
+}
+
+/* ===== INTRO ===== */
+.intro {
+  max-width: 800px;
+  margin: 0 auto;
+  padding: 5.5rem 3rem 4rem;
+}
+
+.intro p {
+  font-size: 21px;
+  line-height: 1.65;
+  color: var(--ink);
+  margin: 0 0 1.5rem;
+}
+
+.intro p:last-child {
+  margin-bottom: 0;
+}
+
+.intro p strong {
+  color: var(--jd-green-dark);
+  font-weight: 600;
+}
+
+/* ===== SHARED SECTION HEADERS ===== */
+.sectionEyebrow {
+  font-size: 11px;
+  letter-spacing: 0.22em;
+  text-transform: uppercase;
+  color: var(--jd-green);
+  font-weight: 600;
+  margin: 0 0 0.875rem;
+}
+
+.sectionHeading {
+  font-family: var(--font-display-stack);
+  font-size: clamp(32px, 4vw, 48px);
+  font-weight: 400;
+  letter-spacing: -0.01em;
+  line-height: 1.1;
+  margin: 0 0 1.5rem;
+}
+
+.sectionHeading em {
+  font-family: var(--font-serif);
+  font-style: italic;
+  color: var(--jd-green);
+}
+
+.sectionIntro {
+  font-size: 17px;
+  line-height: 1.65;
+  color: var(--ink-2);
+  max-width: 680px;
+  margin: 0 0 3rem;
+}
+
+.sectionIntro a {
+  color: var(--jd-green-dark);
+  text-decoration: none;
+  border-bottom: 1px solid var(--jd-yellow);
+  transition: color 0.15s;
+}
+
+.sectionIntro a:hover {
+  color: var(--jd-green);
+}
+
+/* ===== THE IDEA ===== */
+.idea {
+  background: var(--jd-green-deep);
+  color: #fff;
+  padding: 6rem 3rem;
+}
+
+.ideaInner {
+  max-width: 800px;
+  margin: 0 auto;
+}
+
+.idea .sectionEyebrow {
+  color: var(--jd-yellow);
+}
+
+.idea .sectionHeading {
+  color: #fff;
+}
+
+.idea .sectionHeading em {
+  color: var(--jd-yellow);
+}
+
+.ideaText {
+  font-size: 18px;
+  line-height: 1.65;
+  color: rgba(255, 255, 255, 0.85);
+  margin: 0 0 1.5rem;
+}
+
+.ideaText:last-child {
+  margin-bottom: 0;
+}
+
+.ideaText strong {
+  color: #fff;
+  font-weight: 600;
+}
+
+/* ===== VIDEO ===== */
+.video {
+  max-width: 880px;
+  margin: 0 auto;
+  padding: 5.5rem 3rem;
+  text-align: center;
+}
+
+.video .sectionIntro {
+  margin-left: auto;
+  margin-right: auto;
+}
+
+/* ===== FEATURES ===== */
+.featuresBlock {
+  background: var(--cream);
+  padding: 5.5rem 3rem;
+  border-top: 1px solid var(--rule);
+  border-bottom: 1px solid var(--rule);
+}
+
+.featuresInner {
+  max-width: 1200px;
+  margin: 0 auto;
+}
+
+.featuresGrid {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: 1.25rem;
+}
+
+.featureCard {
+  background: var(--white);
+  border: 1px solid var(--rule);
+  border-radius: 2px;
+  padding: 1.75rem 1.5rem;
+  border-top: 3px solid var(--jd-yellow);
+}
+
+.featureTitle {
+  font-family: var(--font-display-stack);
+  font-size: 20px;
+  font-weight: 400;
+  line-height: 1.25;
+  margin: 0 0 0.625rem;
+  color: var(--ink);
+}
+
+.featureBody {
+  font-size: 14px;
+  color: var(--ink-2);
+  line-height: 1.55;
+  margin: 0;
+}
+
+/* ===== SERVICE CROSS-LINK ===== */
+.serviceNote {
+  max-width: 800px;
+  margin: 0 auto;
+  padding: 3.5rem 3rem;
+}
+
+.serviceNote p {
+  padding: 1.5rem;
+  background: var(--jd-green-pale);
+  border-left: 3px solid var(--jd-green);
+  font-size: 15px;
+  color: var(--jd-green-dark);
+  font-style: italic;
+  line-height: 1.5;
+  margin: 0;
+}
+
+.serviceNote a {
+  color: var(--jd-green-dark);
+  font-weight: 600;
+  text-decoration: none;
+  border-bottom: 1px solid var(--jd-yellow);
+  transition: color 0.15s;
+}
+
+.serviceNote a:hover {
+  color: var(--jd-green);
+}
+
+/* ===== CTA BAND ===== */
+.ctaBand {
+  background: var(--jd-green-pale);
+  padding: 5.5rem 3rem;
+  text-align: center;
+  border-top: 1px solid var(--rule);
+}
+
+.ctaBandHeading {
+  font-family: var(--font-display-stack);
+  font-size: clamp(28px, 3.5vw, 42px);
+  font-weight: 400;
+  line-height: 1.15;
+  margin: 0 auto 1rem;
+  max-width: 780px;
+  color: var(--ink);
+}
+
+.ctaBandHeading em {
+  font-family: var(--font-serif);
+  font-style: italic;
+  color: var(--jd-green);
+}
+
+.ctaBand p {
+  font-size: 16px;
+  color: var(--ink-2);
+  margin: 0 auto 2rem;
+  max-width: 560px;
+}
+
+.ctaRow {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 1.5rem;
+  flex-wrap: wrap;
+}
+
+.ctaButton {
+  display: inline-block;
+  background: var(--jd-green-dark);
+  color: #fff;
+  padding: 1rem 2rem;
+  font-weight: 600;
+  font-size: 13px;
+  letter-spacing: 0.1em;
+  text-transform: uppercase;
+  text-decoration: none;
+  border-radius: 2px;
+  transition: background 0.15s;
+}
+
+.ctaButton:hover {
+  background: var(--jd-green);
+}
+
+.ctaPhone {
+  font-size: 15px;
+  color: var(--jd-green-dark);
+  text-decoration: none;
+  border-bottom: 1px solid var(--jd-yellow);
+  transition: color 0.15s;
+}
+
+.ctaPhone:hover {
+  color: var(--jd-green);
+}
+
+/* ===== RESPONSIVE ===== */
+@media (max-width: 1100px) {
+  .featuresGrid {
+    grid-template-columns: repeat(2, 1fr);
+  }
+}
+
+@media (max-width: 768px) {
+  .heroInner {
+    padding: 6rem 1.25rem 3rem;
+  }
+  .h1 {
+    font-size: clamp(32px, 8.5vw, 52px);
+  }
+  .heroLead {
+    font-size: 17px;
+  }
+  .intro {
+    padding: 3.5rem 1.25rem 2.5rem;
+  }
+  .intro p {
+    font-size: 18px;
+  }
+  .idea {
+    padding: 4rem 1.25rem;
+  }
+  .video {
+    padding: 4rem 1.25rem;
+  }
+  .featuresBlock {
+    padding: 4rem 1.25rem;
+  }
+  .featuresGrid {
+    grid-template-columns: 1fr;
+  }
+  .serviceNote {
+    padding: 2.5rem 1.25rem;
+  }
+  .ctaBand {
+    padding: 3.5rem 1.25rem;
+  }
+}

@@ -69,6 +69,7 @@ export async function Footer() {
           <p className={styles.colTitle}>Company</p>
           <ul>
             <li><Link href="/paddock-maintenance">Paddock maintenance</Link></li>
+            <li><Link href="/carbide-mole-plough">Carbide mole plough</Link></li>
             <li><Link href="/about">About</Link></li>
             <li><Link href="/pricing">Pricing</Link></li>
             <li><Link href="/gallery">Gallery</Link></li>
