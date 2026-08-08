@@ -66,10 +66,16 @@ export async function Footer() {
         ))}
 
         <div className={styles.col}>
+          <p className={styles.colTitle}>Products</p>
+          <ul>
+            <li><Link href="/carbide-mole-plough">Carbide mole plough</Link></li>
+          </ul>
+        </div>
+
+        <div className={styles.col}>
           <p className={styles.colTitle}>Company</p>
           <ul>
             <li><Link href="/paddock-maintenance">Paddock maintenance</Link></li>
-            <li><Link href="/carbide-mole-plough">Carbide mole plough</Link></li>
             <li><Link href="/about">About</Link></li>
             <li><Link href="/pricing">Pricing</Link></li>
             <li><Link href="/gallery">Gallery</Link></li>
