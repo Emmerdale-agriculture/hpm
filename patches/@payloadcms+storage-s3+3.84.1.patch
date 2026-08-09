@@ -1,0 +1,26 @@
+diff --git a/node_modules/@payloadcms/storage-s3/dist/generateSignedURL.js b/node_modules/@payloadcms/storage-s3/dist/generateSignedURL.js
+index e3d4dd0..83d2090 100644
+--- a/node_modules/@payloadcms/storage-s3/dist/generateSignedURL.js
++++ b/node_modules/@payloadcms/storage-s3/dist/generateSignedURL.js
+@@ -2,6 +2,7 @@ import * as AWS from '@aws-sdk/client-s3';
+ import { getSignedUrl } from '@aws-sdk/s3-request-presigner';
+ import { getFileKey } from '@payloadcms/plugin-cloud-storage/utilities';
+ import { APIError, Forbidden } from 'payload';
++import sanitize from 'sanitize-filename';
+ const bytesToMB = (bytes)=>{
+     return bytes / 1024 / 1024;
+ };
+@@ -30,7 +31,12 @@ export const getGenerateSignedURLHandler = ({ access = defaultAccess, acl, bucke
+         const { fileKey, sanitizedDocPrefix } = getFileKey({
+             collectionPrefix,
+             docPrefix,
+-            filename,
++            // Payload core sanitizes the doc filename with `sanitize-filename`
++            // (strips ?, ", etc.) but this handler signed the raw browser
++            // filename, so files like "photo?.jpg" landed in the bucket under
++            // a key the doc URL can never reach (404 forever). Sanitize with
++            // the same function core uses so key and doc filename agree.
++            filename: sanitize(filename),
+             useCompositePrefixes
+         });
+         const signableHeaders = new Set();
