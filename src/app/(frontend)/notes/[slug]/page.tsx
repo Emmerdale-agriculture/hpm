@@ -9,8 +9,8 @@ import config from '@payload-config';
 import { Nav } from '@/components/Nav';
 import { Breadcrumb } from '@/components/Breadcrumb';
 import { Footer } from '@/components/Footer';
-import { mediaUrl, mediaDimensions } from '@/lib/media';
-import { renderLexical, collectUploadIds } from '@/lib/lexical';
+import { mediaUrl } from '@/lib/media';
+import { ContentBlocks, collectBlockUploadIds } from '@/components/ContentBlocks';
 import { serviceForTag } from '@/lib/tag-service-map';
 import { tagDef } from '@/lib/tags';
 import { jsonLd } from '@/lib/jsonld';
@@ -186,14 +186,7 @@ export default async function NotePostPage({
 
   // Inline image hydration for the body
   const content = post.content as unknown[] | null | undefined;
-  const uploadIds: number[] = [];
-  if (Array.isArray(content)) {
-    for (const block of content) {
-      if (block && typeof block === 'object' && (block as { blockType?: string }).blockType === 'richText') {
-        uploadIds.push(...collectUploadIds((block as { content?: unknown }).content));
-      }
-    }
-  }
+  const uploadIds = collectBlockUploadIds(content);
   const mediaById = new Map<number, unknown>();
   if (uploadIds.length > 0) {
     const mediaRes = await payload.find({
@@ -362,54 +355,7 @@ export default async function NotePostPage({
 
       {/* ===== ARTICLE BODY ===== */}
       <article className={styles.article}>
-        {Array.isArray(content) &&
-          content.map((block, i) => {
-            if (block && typeof block === 'object' && (block as { blockType?: string }).blockType === 'richText') {
-              return (
-                <div key={i}>
-                  {renderLexical(
-                    (block as { content?: unknown }).content as never,
-                    { mediaById: mediaById as never },
-                  )}
-                </div>
-              );
-            }
-            if (block && typeof block === 'object' && (block as { blockType?: string }).blockType === 'image') {
-              const b = block as { image?: unknown; caption?: string | null; size?: string | null };
-              const media = b.image as Parameters<typeof mediaUrl>[0];
-              const url = mediaUrl(media, 'feature') ?? mediaUrl(media);
-              if (!url) return null;
-              const caption = b.caption?.trim() || null;
-              const alt =
-                (typeof media === 'object' && media?.alt) || caption || post.title;
-              const dims =
-                (typeof media === 'object' ? mediaDimensions(media, 'feature') : null) ??
-                { width: 1200, height: 800 };
-              return (
-                <figure
-                  key={i}
-                  className={
-                    b.size === 'narrow'
-                      ? styles.figureNarrow
-                      : b.size === 'content'
-                        ? styles.figureContent
-                        : undefined
-                  }
-                >
-                  <Image
-                    src={url}
-                    alt={alt}
-                    width={dims.width}
-                    height={dims.height}
-                    sizes="(max-width: 900px) 100vw, 880px"
-                    style={{ width: '100%', height: 'auto', display: 'block' }}
-                  />
-                  {caption && <figcaption>{caption}</figcaption>}
-                </figure>
-              );
-            }
-            return null;
-          })}
+        <ContentBlocks blocks={content} mediaById={mediaById} fallbackAlt={post.title} />
       </article>
 
       {/* ===== SERVICE CTA — only when primary tag has a service mapping ===== */}

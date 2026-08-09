@@ -1,0 +1,182 @@
+/* Block-specific styles for ContentBlocks. Body typography (p/h2/a/figure
+   bleed) is inherited from the host article's stylesheet, so these rules
+   only cover what the shared blocks add. */
+
+/* ===== IMAGE ===== */
+.figureContent {
+  margin: 48px 0;
+}
+.figureNarrow {
+  margin: 48px auto;
+  max-width: 480px;
+}
+.figureContent figcaption,
+.figureNarrow figcaption {
+  padding: 0;
+}
+
+/* ===== GALLERY ===== */
+.gallery {
+  display: grid;
+  grid-template-columns: repeat(2, 1fr);
+  gap: 16px;
+  margin: 48px 0;
+}
+.galleryItem {
+  position: relative;
+  margin: 0;
+  aspect-ratio: 3 / 2;
+  overflow: hidden;
+  border-radius: 4px;
+  background: var(--paper-2, #f4f2ee);
+}
+.galleryItem figcaption {
+  position: absolute;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  padding: 24px 12px 10px;
+  margin: 0;
+  font-size: 12px;
+  font-style: italic;
+  text-align: left;
+  color: #fff;
+  background: linear-gradient(to top, rgba(0, 0, 0, 0.65), transparent);
+}
+
+/* ===== VIDEO ===== */
+.video {
+  margin: 48px 0;
+}
+.videoFrame {
+  position: relative;
+  aspect-ratio: 16 / 9;
+  background: #000;
+  border-radius: 4px;
+  overflow: hidden;
+}
+.videoFrame iframe {
+  position: absolute;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+  border: 0;
+}
+.videoEl {
+  width: 100%;
+  height: auto;
+  display: block;
+  border-radius: 4px;
+  background: #000;
+}
+
+/* ===== CALLOUT ===== */
+.callout {
+  margin: 40px 0;
+  padding: 20px 24px;
+  border-left: 3px solid var(--ink-3, #8a8578);
+  border-radius: 0 4px 4px 0;
+  background: var(--paper-2, #f4f2ee);
+}
+.calloutInfo {
+  border-left-color: var(--ink-3, #8a8578);
+}
+.calloutHighlight {
+  border-left-color: var(--accent, #6b7f4b);
+  background: color-mix(in srgb, var(--accent, #6b7f4b) 8%, transparent);
+}
+.calloutWarning {
+  border-left-color: #b4552d;
+  background: color-mix(in srgb, #b4552d 8%, transparent);
+}
+.calloutHeading {
+  margin: 0 0 6px;
+  font-weight: 600;
+  font-size: 16px;
+  color: var(--ink, #1d1b16);
+}
+/* Tighten inherited article spacing inside the panel. */
+.calloutBody > :first-child {
+  margin-top: 0;
+}
+.calloutBody > :last-child {
+  margin-bottom: 0;
+}
+.calloutBody p {
+  font-size: 16px;
+}
+
+/* ===== MID-ARTICLE HERO ===== */
+.hero {
+  margin: 48px 0;
+}
+.heroHeading {
+  margin: 16px 0 4px;
+  font-size: 26px;
+  font-weight: 400;
+  line-height: 1.25;
+  color: var(--ink, #1d1b16);
+}
+.heroSub {
+  margin: 0 0 12px;
+  color: var(--ink-2, #4a463d);
+}
+
+/* ===== CTA ===== */
+.cta {
+  margin: 48px 0;
+  padding: 28px 32px;
+  border: 1px solid var(--rule, #ddd8cd);
+  border-radius: 6px;
+  background: var(--paper-2, #f4f2ee);
+}
+.ctaHeading {
+  margin: 0 0 8px;
+  font-size: 22px;
+  font-weight: 400;
+  color: var(--ink, #1d1b16);
+}
+.ctaBody {
+  margin: 0 0 16px;
+  color: var(--ink-2, #4a463d);
+}
+.ctaActions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 12px;
+}
+.ctaBtn {
+  display: inline-block;
+  padding: 11px 20px;
+  border-radius: 4px;
+  background: var(--ink, #1d1b16);
+  color: var(--paper, #fbf9f5);
+  font-size: 14px;
+  text-decoration: none;
+}
+.ctaBtn:hover {
+  opacity: 0.88;
+}
+.ctaBtnGhost {
+  display: inline-block;
+  padding: 10px 19px;
+  border: 1px solid var(--ink, #1d1b16);
+  border-radius: 4px;
+  color: var(--ink, #1d1b16);
+  font-size: 14px;
+  text-decoration: none;
+}
+.ctaBtnGhost:hover {
+  background: var(--ink, #1d1b16);
+  color: var(--paper, #fbf9f5);
+}
+
+/* ===== RESPONSIVE ===== */
+@media (max-width: 700px) {
+  .gallery {
+    grid-template-columns: 1fr;
+  }
+  .cta {
+    padding: 22px 20px;
+  }
+}

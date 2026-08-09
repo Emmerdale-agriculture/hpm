@@ -15,7 +15,7 @@ import { StickyQuoteCta } from '@/components/StickyQuoteCta';
 import { CtaBlock } from '@/components/CtaBlock';
 import { Footer } from '@/components/Footer';
 import { PhoneStrip } from '@/components/PhoneStrip';
-import { renderLexical, collectUploadIds } from '@/lib/lexical';
+import { ContentBlocks, collectBlockUploadIds } from '@/components/ContentBlocks';
 import { mediaUrl } from '@/lib/media';
 import { jsonLd } from '@/lib/jsonld';
 
@@ -177,14 +177,7 @@ export default async function ServicePage({ params }: { params: Promise<Params> 
 
   // Body content — pull image refs so we can render <figure> inside richText
   const content = svc.content as unknown[] | null | undefined;
-  const uploadIds: number[] = [];
-  if (Array.isArray(content)) {
-    for (const block of content) {
-      if (block && typeof block === 'object' && (block as { blockType?: string }).blockType === 'richText') {
-        uploadIds.push(...collectUploadIds((block as { content?: unknown }).content));
-      }
-    }
-  }
+  const uploadIds = collectBlockUploadIds(content);
   const mediaById = new Map<number, unknown>();
   if (uploadIds.length) {
     const mediaRes = await payload.find({
@@ -198,19 +191,10 @@ export default async function ServicePage({ params }: { params: Promise<Params> 
     }
   }
 
-  // Build the rendered body from all richText blocks, concatenated
-  const bodyNodes = Array.isArray(content)
-    ? content.map((block, i) => {
-        if (block && typeof block === 'object' && (block as { blockType?: string }).blockType === 'richText') {
-          return (
-            <div key={i}>
-              {renderLexical((block as { content?: unknown }).content as never, { mediaById: mediaById as never })}
-            </div>
-          );
-        }
-        return null;
-      })
-    : null;
+  // Rendered body — every block type, not just richText.
+  const bodyNodes = Array.isArray(content) ? (
+    <ContentBlocks blocks={content} mediaById={mediaById} fallbackAlt={svc.title} />
+  ) : null;
 
   // JSON-LD: Service schema. Authors can override via seo.structuredDataOverride
   // in Payload — the override replaces the auto-generated schema entirely.
