@@ -37,14 +37,30 @@ function evictExpiredAndTrim(now: number): void {
   }
 }
 
-async function fetchOne(from: string, origin: string): Promise<CachedRedirect | null> {
+// A redirect lookup is an SEO nicety; serving the page is the job. If the
+// Payload API is slow (stuck DB transaction, cold-start pileup), waiting on
+// it turns every page into a MIDDLEWARE_INVOCATION_TIMEOUT 504 — as on
+// 2026-08-09, when two zombie transactions starved the API's pool and took
+// down all note pages. Bound each lookup and fail open.
+const LOOKUP_TIMEOUT_MS = 3_000;
+
+/** Thrown/returned sentinel: the API is sick — stop probing candidates. */
+const TIMED_OUT = Symbol('redirect-lookup-timeout');
+
+async function fetchOne(
+  from: string,
+  origin: string,
+): Promise<CachedRedirect | null | typeof TIMED_OUT> {
   try {
     const url = new URL('/api/redirects', origin);
     url.searchParams.set('where[from][equals]', from);
     url.searchParams.set('where[active][equals]', 'true');
     url.searchParams.set('limit', '1');
     url.searchParams.set('depth', '0');
-    const res = await fetch(url.toString(), { cache: 'no-store' });
+    const res = await fetch(url.toString(), {
+      cache: 'no-store',
+      signal: AbortSignal.timeout(LOOKUP_TIMEOUT_MS),
+    });
     if (!res.ok) return null;
     const body = (await res.json()) as {
       docs?: Array<{ to?: string | null; statusCode?: string; active?: boolean }>;
@@ -56,7 +72,10 @@ async function fetchOne(from: string, origin: string): Promise<CachedRedirect | 
       statusCode: (Number(doc.statusCode) as 301 | 302 | 410) || 301,
       active: Boolean(doc.active),
     };
-  } catch {
+  } catch (err) {
+    if (err instanceof Error && (err.name === 'TimeoutError' || err.name === 'AbortError')) {
+      return TIMED_OUT;
+    }
     return null;
   }
 }
@@ -82,7 +101,14 @@ async function lookup(pathname: string, origin: string): Promise<CachedRedirect 
 
   let value: CachedRedirect | null = null;
   for (const candidate of candidates) {
-    value = await fetchOne(candidate, origin);
+    const result = await fetchOne(candidate, origin);
+    if (result === TIMED_OUT) {
+      // API is unhealthy — don't burn the middleware's time budget on the
+      // remaining candidates, and don't cache the miss (the redirect may
+      // well exist; retry once the API recovers).
+      return null;
+    }
+    value = result;
     if (value) break;
   }
   cache.set(pathname, { value, expires: now + TTL_MS });
@@ -108,7 +134,10 @@ async function lookupWpQueryRedirect(wpId: string, origin: string): Promise<stri
     url.searchParams.set('where[_status][equals]', 'published');
     url.searchParams.set('limit', '1');
     url.searchParams.set('depth', '0');
-    const res = await fetch(url.toString(), { cache: 'no-store' });
+    const res = await fetch(url.toString(), {
+      cache: 'no-store',
+      signal: AbortSignal.timeout(LOOKUP_TIMEOUT_MS),
+    });
     if (res.ok) {
       const body = (await res.json()) as { docs?: Array<{ slug?: string }> };
       const slug = body.docs?.[0]?.slug;
