@@ -178,6 +178,19 @@
   font-style: italic;
   text-align: center;
 }
+/* Image-block widths. Default (full) inherits the bleed above; these two
+   pull back to the text column and narrower. */
+.figureContent {
+  margin: 48px 0;
+}
+.figureContent figcaption,
+.figureNarrow figcaption {
+  padding: 0;
+}
+.figureNarrow {
+  margin: 48px auto;
+  max-width: 480px;
+}
 
 /* ===== SERVICE CTA PANEL ===== */
 .serviceCta {

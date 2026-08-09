@@ -9,7 +9,7 @@ import config from '@payload-config';
 import { Nav } from '@/components/Nav';
 import { Breadcrumb } from '@/components/Breadcrumb';
 import { Footer } from '@/components/Footer';
-import { mediaUrl } from '@/lib/media';
+import { mediaUrl, mediaDimensions } from '@/lib/media';
 import { renderLexical, collectUploadIds } from '@/lib/lexical';
 import { serviceForTag } from '@/lib/tag-service-map';
 import { tagDef } from '@/lib/tags';
@@ -372,6 +372,40 @@ export default async function NotePostPage({
                     { mediaById: mediaById as never },
                   )}
                 </div>
+              );
+            }
+            if (block && typeof block === 'object' && (block as { blockType?: string }).blockType === 'image') {
+              const b = block as { image?: unknown; caption?: string | null; size?: string | null };
+              const media = b.image as Parameters<typeof mediaUrl>[0];
+              const url = mediaUrl(media, 'feature') ?? mediaUrl(media);
+              if (!url) return null;
+              const caption = b.caption?.trim() || null;
+              const alt =
+                (typeof media === 'object' && media?.alt) || caption || post.title;
+              const dims =
+                (typeof media === 'object' ? mediaDimensions(media, 'feature') : null) ??
+                { width: 1200, height: 800 };
+              return (
+                <figure
+                  key={i}
+                  className={
+                    b.size === 'narrow'
+                      ? styles.figureNarrow
+                      : b.size === 'content'
+                        ? styles.figureContent
+                        : undefined
+                  }
+                >
+                  <Image
+                    src={url}
+                    alt={alt}
+                    width={dims.width}
+                    height={dims.height}
+                    sizes="(max-width: 900px) 100vw, 880px"
+                    style={{ width: '100%', height: 'auto', display: 'block' }}
+                  />
+                  {caption && <figcaption>{caption}</figcaption>}
+                </figure>
               );
             }
             return null;
