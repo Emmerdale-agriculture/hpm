@@ -158,31 +158,12 @@ export default async function CarbideMolePloughPage() {
   const heroAlt =
     'Tractor mole ploughing hard, compacted ground — the conditions the carbide-tipped mole plough is designed for';
 
-  // Product JSON-LD. The brand/manufacturer references the sitewide
-  // LocalBusiness @id (defined in the root layout) so Google treats it as
-  // the same entity. No Offer block — price is on application.
-  const siteUrl = (
-    process.env.NEXT_PUBLIC_SITE_URL || 'https://hampshirepaddockmanagement.com'
-  ).replace(/\/$/, '');
-  const productImage =
-    mediaUrl(heroMedia as Parameters<typeof mediaUrl>[0], 'large') ?? heroUrl;
-  const productJsonLd = {
-    '@context': 'https://schema.org',
-    '@type': 'Product',
-    name: 'Indexable Carbide-Tipped Mole Plough',
-    description:
-      'Agricultural mole plough with an indexable, removable and replaceable carbide cutting tip and Hardox wear protection in high-draft and high-abrasion areas. Designed for hard and heavily compacted soils.',
-    ...(productImage ? { image: productImage } : {}),
-    brand: { '@type': 'Brand', name: 'Emmerdale Agriculture' },
-    manufacturer: {
-      '@type': 'LocalBusiness',
-      '@id': `${siteUrl}/#business`,
-      name: 'Hampshire Paddock Management',
-      telephone: SITE_PHONE_TEL,
-    },
-    category: 'Agricultural machinery',
-    url: `${siteUrl}/carbide-mole-plough`,
-  };
+  // No Product JSON-LD here, deliberately. Google's Product snippet requires
+  // one of offers/review/aggregateRating, and this machine is price-on-
+  // application — so the markup could never validate and Search Console
+  // flagged it as a critical error. The page keeps its VideoObject, FAQPage,
+  // BreadcrumbList and the sitewide LocalBusiness markup, all of which are
+  // valid. Only re-add Product if a real price (or price range) is published.
 
   // Video rich-result eligibility needs a thumbnail, so only emit the
   // VideoObject when the oEmbed lookup succeeded.
@@ -214,10 +195,6 @@ export default async function CarbideMolePloughPage() {
     <>
       {/* JSON-LD must be in the initial HTML for SEO crawlers — use a plain
           <script> rather than next/script (which is lazy-loaded). */}
-      <script
-        type="application/ld+json"
-        dangerouslySetInnerHTML={{ __html: jsonLd(productJsonLd) }}
-      />
       {videoJsonLd && (
         <script
           type="application/ld+json"
