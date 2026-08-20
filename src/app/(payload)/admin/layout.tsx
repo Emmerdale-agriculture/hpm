@@ -5,7 +5,7 @@
 import type { Metadata } from 'next';
 import config from '@payload-config';
 import { RootLayout, handleServerFunctions } from '@payloadcms/next/layouts';
-import { importMap } from './admin/importMap';
+import { importMap } from './importMap';
 
 import '@payloadcms/next/css';
 import './custom.css';
