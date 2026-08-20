@@ -14,12 +14,24 @@ import { jsonLd } from '@/lib/jsonld';
 // no swap, no shift. `adjustFontFallback` is the default in Next 15.x
 // but stated explicitly so future rotations don't lose the size-adjust
 // metrics.
+//
+// `preload: false` on both faces is deliberate, and is a byte saving rather
+// than a regression. Vercel appends its deployment id to asset URLs, so
+// next/font emits <link rel=preload href="...woff2?dpl=xxx"> while the
+// @font-face src in the generated CSS points at the SAME file without the
+// query string. The browser treats those as two different URLs and fetches
+// the font twice — 46 kB wasted per fresh visit — while the preload warms a
+// URL the CSS never asks for, so it buys nothing. Dropping the preload
+// removes the duplicate download and changes nothing else; the fonts still
+// load from the CSS exactly as before. See next-font-loader, which (unlike
+// flight-manifest-plugin) never applies deploymentId to its url() output.
 const tenor = Tenor_Sans({
   subsets: ['latin'],
   weight: '400',
   variable: '--font-display',
   display: 'optional',
   adjustFontFallback: true,
+  preload: false,
 });
 
 // Body font stays on `swap` — DM Sans's metrics are close enough to the
@@ -30,6 +42,7 @@ const dm = DM_Sans({
   variable: '--font-body',
   display: 'swap',
   adjustFontFallback: true,
+  preload: false,
 });
 
 // Default metadata — individual pages override as needed.
