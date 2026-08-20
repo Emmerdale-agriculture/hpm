@@ -1,6 +1,27 @@
 import { withPayload } from '@payloadcms/next/withPayload';
 import bundleAnalyzer from '@next/bundle-analyzer';
 
+// Drop Vercel's deployment-id asset param.
+//
+// Vercel sets NEXT_DEPLOYMENT_ID, which makes Next append `?dpl=<id>` to
+// script and preload hrefs. next-font-loader does NOT apply it to the
+// @font-face `src: url(...)` it generates, so the preload and the CSS pointed
+// at the same woff2 under two different URLs: the browser downloaded each font
+// twice (~46 kB wasted per fresh visit) and the preload warmed a URL the CSS
+// never requested. With no effective preload, DM Sans arrived late and swapped
+// in at ~1.8s, jumping the hero content 69px — the whole of the homepage's
+// 0.119 mobile CLS (isolated by blocking each font in turn against prod).
+//
+// Assets are already content-hashed, so `?dpl=` adds no cache-busting we don't
+// already have; what it does add is Vercel Skew Protection, which we're
+// knowingly trading away here for working preloads.
+//
+// This has to be a delete rather than `deploymentId: undefined` below:
+// next/dist/server/config.js does `if (process.env.NEXT_DEPLOYMENT_ID)
+// result.deploymentId = process.env.NEXT_DEPLOYMENT_ID` AFTER this file is
+// imported, so the env var would otherwise win.
+delete process.env.NEXT_DEPLOYMENT_ID;
+
 const withBundleAnalyzer = bundleAnalyzer({
   enabled: process.env.ANALYZE === 'true',
 });
