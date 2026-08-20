@@ -104,8 +104,18 @@ function renderNode(node: LexicalNode | undefined, key: string, opts: RenderOpts
   }
 
   if (type === 'upload') {
-    const id = typeof node.value === 'number' ? node.value : null;
-    const media = id && opts.mediaById?.get(id);
+    // `value` arrives as a bare id when the doc was fetched at depth 0 (the
+    // caller then hydrates via collectUploadIds → opts.mediaById), but Payload
+    // populates it into the media doc itself at depth >= 1. Accept both:
+    // reading only the number silently rendered nothing on every page that
+    // fetches with depth (e.g. /notes/[slug]).
+    const populated =
+      node.value && typeof node.value === 'object' ? (node.value as MediaDoc) : null;
+    const id =
+      typeof node.value === 'number'
+        ? node.value
+        : (populated as { id?: unknown } | null)?.id;
+    const media = populated ?? (typeof id === 'number' ? opts.mediaById?.get(id) : null);
     if (!media) return null;
     const url = mediaUrl(media, 'feature') ?? mediaUrl(media);
     if (!url) return null;
@@ -167,8 +177,14 @@ export function collectUploadIds(content: unknown): number[] {
   const walk = (n: unknown) => {
     if (!n || typeof n !== 'object') return;
     const node = n as LexicalNode;
-    if (node.type === 'upload' && typeof node.value === 'number') {
-      ids.add(node.value);
+    if (node.type === 'upload') {
+      // Bare id at depth 0; already-populated media doc at depth >= 1 (nothing
+      // to fetch in that case, but collect the id so callers stay consistent).
+      if (typeof node.value === 'number') ids.add(node.value);
+      else if (node.value && typeof node.value === 'object') {
+        const inner = (node.value as { id?: unknown }).id;
+        if (typeof inner === 'number') ids.add(inner);
+      }
     }
     if (Array.isArray(node.children)) node.children.forEach(walk);
     if ('root' in (n as Record<string, unknown>)) {

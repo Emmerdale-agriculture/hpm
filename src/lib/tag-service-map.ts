@@ -20,6 +20,7 @@ export const tagToService: Record<string, TagService | null> = {
   drainage:      { slug: 'mole-ploughing',      label: 'Mole ploughing',   verb: 'sort drainage' },
   'ground-care': { slug: 'harrowing',           label: 'Harrowing',        verb: 'look after paddocks' },
   hedges:        { slug: 'hedge-cutting',       label: 'Hedge cutting',    verb: 'cut hedges' },
+  clearance:     { slug: 'wood-chipping',       label: 'Land clearance',   verb: 'clear overgrown land' },
   // Informational tags — no service CTA.
   equipment:     null,
   seasonal:      null,
@@ -47,6 +48,7 @@ export const serviceToTags: Record<string, string[]> = {
   'weed-control':           ['weeds'],
   'spraying':               ['weeds'],
   'mole-ploughing':         ['drainage'],
+  'wood-chipping':          ['clearance', 'equipment'],
   'land-ditch-clearance':   ['drainage', 'ground-care'],
   'harrowing':              ['ground-care'],
   'rolling':                ['ground-care'],

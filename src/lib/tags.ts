@@ -59,6 +59,13 @@ export const CURATED_TAGS: TagDef[] = [
       'Hedge cutting, trimming and hedge health in Hampshire — when to cut, what the law allows, and spotting problems early.',
   },
   {
+    slug: 'clearance',
+    label: 'Clearance',
+    metaTitle: 'Land clearance & wood chipping notes',
+    description:
+      'Clearing overgrown paddocks and neglected grazing — scrub, brambles and self-seeded trees, what the machinery can take, and turning land back into usable pasture.',
+  },
+  {
     slug: 'seasonal',
     label: 'Seasonal',
     metaTitle: 'Seasonal paddock care notes',
