@@ -15,10 +15,8 @@
  *   meta desc   "Tracked 8in chipper works off-road."
  *               → "Tracked chipper works off-road."
  *
- * The 57 hp Kubota and ~7 t/hr throughput are also dealer-listing figures and
- * have NOT been confirmed by Tom. The equipment line keeps 57 hp and the body
- * keeps both; if either is wrong they need the same treatment. Flagged rather
- * than silently dropped.
+ * The 57 hp Kubota and ~7 t/hr throughput came from the same dealer listings
+ * but Tom confirmed both as correct on 2026-08-20, so they stand as written.
  *
  * apply-wood-chipping-service-2026-W34.mjs has been corrected at source too, so
  * a from-scratch run produces the right copy. That script is sentinel-guarded
@@ -144,5 +142,4 @@ if (changes && EXECUTE) {
 
 console.log();
 console.log(`done: ${changes} change${changes === 1 ? '' : 's'}${EXECUTE ? '' : ' (dry-run)'}`);
-console.log('note: 57 hp and ~7 t/hr are still dealer-listing figures, unconfirmed by Tom.');
 process.exit(0);
