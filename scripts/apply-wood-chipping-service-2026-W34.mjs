@@ -114,7 +114,7 @@ const BODY_LEXICAL = {
       heading('h2', 'A chipper that gets to the work'),
       para([
         text(
-          'I run a Timberwolf TW 280FTR: a tracked, self-propelled chipper with an 8-inch (210 mm) throat, a 57 hp Kubota engine and a throughput of around seven tonnes an hour. The tracks are the point of it. A towed chipper has to sit on hard standing while somebody drags brash a hundred yards down to it; this one walks up the field, across soft ground and through ordinary gateways, and works alongside the pile. On horse paddocks, smallholdings and the tight corners I mostly work in, that’s the difference between a job that’s worth doing and one that isn’t.',
+          'I run a Timberwolf TW 280FTR: a tracked, self-propelled chipper with a 10 × 8 inch mouth, a 57 hp Kubota engine and a throughput of around seven tonnes an hour. The tracks are the point of it. A towed chipper has to sit on hard standing while somebody drags brash a hundred yards down to it; this one walks up the field, across soft ground and through ordinary gateways, and works alongside the pile. On horse paddocks, smallholdings and the tight corners I mostly work in, that’s the difference between a job that’s worth doing and one that isn’t.',
         ),
       ]),
       para([
@@ -177,7 +177,7 @@ const SERVICE_DATA = {
   orderInMenu: 95, // directly above Land & ditch clearance (100) in ground care
   category: 'ground-care',
   equipment: [
-    { name: 'Timberwolf TW 280FTR', spec: '8in (210mm) tracked chipper · 57 hp · ~7 t/hr' },
+    { name: 'Timberwolf TW 280FTR', spec: '10 × 8in mouth · tracked, self-propelled · 57 hp' },
     { name: 'Compact tractor & flail', spec: 'Knocking down scrub and bramble ahead of the chipper' },
     { name: 'Professional chainsaws', spec: 'Felling, snedding and ringing down on site' },
   ],
@@ -190,7 +190,7 @@ const SERVICE_DATA = {
   seo: {
     metaTitle: 'Wood Chipping & Land Clearance in Hampshire | Tracked Chipper',
     metaDescription:
-      'Wood chipping and land clearance across Hampshire — scrub, brambles, fallen timber and site clearance. Tracked 8in chipper works off-road. Same-day quotes.',
+      'Wood chipping and land clearance across Hampshire — scrub, brambles, fallen timber and site clearance. Tracked chipper works off-road. Same-day quotes.',
   },
 };
 
