@@ -121,11 +121,16 @@ function wordCountFromContent(content: unknown): number {
   let words = 0;
   const walk = (node: unknown) => {
     if (!node || typeof node !== 'object') return;
-    const n = node as { text?: unknown; children?: unknown };
+    const n = node as { text?: unknown; children?: unknown; root?: unknown };
     if (typeof n.text === 'string') {
       words += n.text.split(/\s+/).filter(Boolean).length;
     }
     if (Array.isArray(n.children)) n.children.forEach(walk);
+    // The block's `content` is `{ root: {...} }`, not a node with `children`.
+    // Without this the walk stopped at the wrapper and counted zero words, so
+    // every post fell through to `Math.max(1, 0)` and advertised "1 min read"
+    // — including 5,000-word articles.
+    if (n.root) walk(n.root);
   };
   for (const block of content) {
     if (block && typeof block === 'object' && (block as { blockType?: string }).blockType === 'richText') {
