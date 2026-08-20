@@ -22,13 +22,27 @@ const tenor = Tenor_Sans({
   adjustFontFallback: true,
 });
 
-// Body font stays on `swap` — DM Sans's metrics are close enough to the
-// system fallback that the swap doesn't cause a measurable shift.
+// DM Sans is `optional` for the same reason as Tenor. It was on `swap`, on the
+// assumption that its metrics are close enough to the fallback that swapping
+// costs nothing measurable. That holds on desktop but not on throttled mobile:
+// prod at 390x844 / slow 4G / 4x CPU scored CLS 0.119 — over Google's 0.1
+// threshold — from one 69px jump of the hero content when DM Sans swapped in
+// at ~1.8s. Blocking each font in turn against prod pinned it: without DM Sans
+// CLS was 0, without Tenor it stayed 0.119.
+//
+// Fixing the preload (see the ?dpl= note in next.config.mjs) was NOT enough on
+// its own — measured still 0.119 — because `swap` swaps whenever the font
+// lands, preload or not. `optional` never swaps, so the shift cannot happen.
+// The reason it's an acceptable trade now and wasn't before: with a working
+// preload the font is actually in flight from the start, so it often arrives
+// inside the ~100ms block window and real DM Sans still renders on a first
+// visit. Previously the preload fetched a URL the CSS ignored, so `optional`
+// would have meant the fallback nearly every time.
 const dm = DM_Sans({
   subsets: ['latin'],
   weight: ['400', '500', '600', '700'],
   variable: '--font-body',
-  display: 'swap',
+  display: 'optional',
   adjustFontFallback: true,
 });
 
