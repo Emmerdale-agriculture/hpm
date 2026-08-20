@@ -3,6 +3,7 @@ import Link from 'next/link';
 
 import { mediaUrl, mediaDimensions } from '@/lib/media';
 import { renderLexical, collectUploadIds } from '@/lib/lexical';
+import { TikTokEmbed } from './TikTokEmbed';
 import styles from './ContentBlocks.module.css';
 
 /**
@@ -86,6 +87,24 @@ function Figure({
  * form. Returns null for anything unrecognised so we render a plain link
  * rather than an iframe that shows "Video unavailable".
  */
+/**
+ * Pull the handle and numeric id out of a TikTok video URL
+ * (https://www.tiktok.com/@handle/video/1234567890). Returns null for
+ * anything that isn't one, so the caller falls back to a plain link rather
+ * than rendering an embed that will never load.
+ */
+function parseTikTok(raw: string): { username: string; videoId: string } | null {
+  let u: URL;
+  try {
+    u = new URL(raw.trim());
+  } catch {
+    return null;
+  }
+  if (!u.hostname.replace(/^www\./, '').endsWith('tiktok.com')) return null;
+  const m = u.pathname.match(/^\/@([^/]+)\/video\/(\d+)/);
+  return m ? { username: m[1], videoId: m[2] } : null;
+}
+
 function embedUrl(provider: string | null | undefined, raw: string): string | null {
   let u: URL;
   try {
@@ -218,6 +237,24 @@ export function ContentBlocks({
 
             const raw = typeof b.url === 'string' ? b.url : '';
             if (!raw) return null;
+
+            // TikTok can't be framed like YouTube/Vimeo — it needs its own
+            // blockquote + embed.js. TikTokEmbed lazy-loads that script so the
+            // 1-2 MB player only costs readers who scroll to it.
+            const tiktok = provider === 'tiktok' ? parseTikTok(raw) : null;
+            if (tiktok) {
+              return (
+                <figure key={key} className={styles.video}>
+                  <TikTokEmbed
+                    videoId={tiktok.videoId}
+                    username={tiktok.username}
+                    caption={caption ?? ''}
+                  />
+                  {caption && <figcaption>{caption}</figcaption>}
+                </figure>
+              );
+            }
+
             const embed = embedUrl(provider, raw);
             if (!embed) {
               return (

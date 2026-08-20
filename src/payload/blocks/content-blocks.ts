@@ -88,6 +88,7 @@ export const VideoBlock: Block = {
       options: [
         { label: 'YouTube', value: 'youtube' },
         { label: 'Vimeo', value: 'vimeo' },
+        { label: 'TikTok', value: 'tiktok' },
         { label: 'Self-hosted (upload)', value: 'self' },
       ],
     },
@@ -96,7 +97,8 @@ export const VideoBlock: Block = {
       type: 'text',
       admin: {
         condition: (_, siblingData) => siblingData?.provider !== 'self',
-        description: 'Paste the YouTube or Vimeo URL.',
+        description:
+          'Paste the video URL. TikTok links look like https://www.tiktok.com/@handle/video/1234567890.',
       },
     },
     {
