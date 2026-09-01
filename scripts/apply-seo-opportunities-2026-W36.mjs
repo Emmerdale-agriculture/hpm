@@ -224,6 +224,30 @@ const SPRAYING_LINK_TARGETS = [
 ];
 
 // ---------------------------------------------------------------- helpers
+// GOTCHA (bit us on post 70, 2026-09-01): on a drafts-enabled collection,
+// payload.update() merges onto the doc's LATEST version. If that latest
+// version is a draft newer than the published one — which happens whenever
+// someone saved a draft after publishing — the write persists
+// _status:'draft' back to the main row and silently UNPUBLISHES the page
+// (it starts 404ing). Every update below therefore passes draft:false and
+// re-asserts _status for docs that were published when we read them.
+const publishGuard = (doc) => (doc?._status === 'published' ? { _status: 'published' } : {});
+
+// Re-publish a doc that should be live but isn't.
+async function republish(payload, collection, id, expectedSlug) {
+  const doc = await findDoc(payload, collection, id, expectedSlug);
+  if (!doc) return;
+  if (doc._status === 'published') {
+    console.log(`  [unchanged] ${collection}/${id} already published`);
+    return;
+  }
+  console.log(`  [republish] ${collection}/${id} is "${doc._status}" → published`);
+  if (EXECUTE) {
+    await payload.update({ collection, id, draft: false, data: { _status: 'published' } });
+    console.log('  ✓ republished');
+  }
+}
+
 // Mirror drifts from prod (post 70 and services created after the snapshot
 // simply aren't there), so a missing doc is a skip, not a crash.
 async function findDoc(payload, collection, id, expectedSlug) {
@@ -266,8 +290,8 @@ async function appendBlock(payload, collection, id, expectedSlug, sentinel, bloc
   console.log(`  [append] "${sentinel.slice(0, 52)}…" (${(doc.content ?? []).length} → ${(doc.content ?? []).length + 1} blocks)`);
   if (EXECUTE) {
     await payload.update({
-      collection, id,
-      data: { content: [...(doc.content ?? []), block] },
+      collection, id, draft: false,
+      data: { content: [...(doc.content ?? []), block], ...publishGuard(doc) },
     });
     console.log('  ✓ appended');
   }
@@ -288,7 +312,10 @@ async function setMeta(payload, collection, id, expectedSlug, metaTitle, metaDes
     console.log(`  [meta] ${k}: "${(doc.seo?.[k] ?? '').slice(0, 80)}" →\n         "${v}"`);
   }
   if (EXECUTE) {
-    await payload.update({ collection, id, data: { seo: { ...doc.seo, ...changes } } });
+    await payload.update({
+      collection, id, draft: false,
+      data: { seo: { ...doc.seo, ...changes }, ...publishGuard(doc) },
+    });
     console.log('  ✓ meta updated');
   }
 }
@@ -303,8 +330,8 @@ async function appendLink(payload, t, url) {
   console.log(`  [append] ${t.collection}/${t.slug.slice(0, 46)} → ${url}`);
   if (EXECUTE) {
     await payload.update({
-      collection: t.collection, id: t.id,
-      data: { content: [...(doc.content ?? []), t.block] },
+      collection: t.collection, id: t.id, draft: false,
+      data: { content: [...(doc.content ?? []), t.block], ...publishGuard(doc) },
     });
     console.log('    ✓ written');
   }
@@ -346,6 +373,8 @@ await appendBlock(payload, 'posts', MCCONNEL_POST_ID, MCCONNEL_SLUG, MCCONNEL_SE
 console.log('\n#47+#51 — post 70 (why-harrow) retargeted away from post 29:');
 await setMeta(payload, 'posts', WHYHARROW_POST_ID, WHYHARROW_SLUG, WHYHARROW_META_TITLE, WHYHARROW_META_DESC);
 await appendBlock(payload, 'posts', WHYHARROW_POST_ID, WHYHARROW_SLUG, WHYHARROW_SENTINEL, WHYHARROW_BLOCK);
+// Repair: the first W36 prod run unpublished this post (see publishGuard note).
+await republish(payload, 'posts', WHYHARROW_POST_ID, WHYHARROW_SLUG);
 
 console.log('\n#46 — /services/spraying discovery links (never crawled by Google):');
 for (const t of SPRAYING_LINK_TARGETS) await appendLink(payload, t, SPRAYING_URL);
