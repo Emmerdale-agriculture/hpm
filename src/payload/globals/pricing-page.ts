@@ -365,8 +365,10 @@ export const PricingPage: GlobalConfig = {
               name: 'metaDescription',
               type: 'textarea',
               required: true,
+              // Kept under ~155 chars — the county list ran the previous
+              // default to 165 and truncated it in the SERP.
               defaultValue:
-                'Transparent paddock and field management pricing across Hampshire, Wiltshire, Berkshire, Dorset, Surrey and Sussex. Hourly, per-acre, day-rate and programme pricing.',
+                'Transparent paddock and field management pricing across Hampshire and the surrounding counties: hourly, per-acre, day-rate and full programme pricing.',
             },
           ],
         },

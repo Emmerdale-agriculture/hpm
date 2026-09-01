@@ -32,9 +32,11 @@ export async function generateMetadata(): Promise<Metadata> {
     mediaUrl(hero as Parameters<typeof mediaUrl>[0], 'large') ??
     mediaUrl(hero as Parameters<typeof mediaUrl>[0]);
   return {
-    title: { absolute: 'Paddock Maintenance — Full Guide & Services | Hampshire Paddock Management' },
+    // Title and description kept inside SERP display limits (~60 / ~155);
+    // the previous pair ran to 78 and 192 characters and truncated.
+    title: { absolute: 'Paddock Maintenance in Hampshire — Full Guide & Services' },
     description:
-      "Everything paddock maintenance involves — seasonal schedule, full service list, how pricing works, and how to get year-round contract maintenance across Hampshire and the surrounding counties.",
+      'What paddock maintenance involves, the seasonal schedule, the full service list and how pricing works — across Hampshire and the surrounding counties.',
     alternates: { canonical: '/paddock-maintenance' },
     openGraph: {
       title: 'Paddock Maintenance — Full Guide & Services',
