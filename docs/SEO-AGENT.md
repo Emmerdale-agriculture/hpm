@@ -18,8 +18,20 @@ Three opportunity types:
 | Type | Trigger | Output |
 |---|---|---|
 | `meta_rewrite` | Position 1–5, ≥30 imp, CTR < 70% of position-expected | 3 alternative title+meta pairs |
-| `on_page_tweak` | Position 8–20, ≥50 imp | New H2 + body + internal links + FAQ |
-| `new_article` | Position ≥20, ≥30 imp, informational/commercial intent | Full markdown draft + linked Posts entry |
+| `on_page_tweak` | Position >5 and ≤20, ≥30 imp | New H2 + body + internal links + FAQ |
+| `new_article` | Position >20, ≥30 imp, informational/commercial intent | Full markdown draft + linked Posts entry |
+
+Bands are contiguous and the impression floor is 30 everywhere — keep this
+table in step with `triage.ts`, which is authoritative. It drifted once and
+cost a session chasing a "position 5–8 blind spot" that the code had already
+closed.
+
+GSC returns one row per (query, page). `groupByQuery` collapses those to the
+**primary page** — most impressions — and keeps that row intact. Don't switch
+it to best-position (it hides high-volume queries whose best-ranked page is a
+bit-part URL) and don't sum impressions across pages (ctr then needs a new
+denominator, and no-click secondary pages drag healthy pages below the
+meta_rewrite benchmark).
 
 ## File map
 

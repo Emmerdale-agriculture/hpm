@@ -66,22 +66,49 @@ export function articleScore(row: { impressions: number; position: number }): nu
 }
 
 /**
- * Group raw GSC rows by query (taking the best-ranking page per query as
- * the canonical "page" for that query). GSC returns multiple rows per
- * query when several pages rank for it — we want the strongest one.
+ * Group raw GSC (query, page) rows into one row per query, keeping the
+ * PRIMARY page — the one with the most impressions for that query.
+ *
+ * GSC returns a row per (query, page) pair, so a query the site ranks for
+ * with several URLs arrives split across them. The primary page is the URL
+ * Google actually serves for the query, so it is both the best demand
+ * signal and the right target for a draft.
+ *
+ * This used to keep whichever row had the BEST POSITION and discard the
+ * rest, impressions included. That silently dropped the site's biggest
+ * query: "rotavating" splits as /services/rotavating (pos 7.2, 11
+ * impressions) and the rotavating note (pos 7.8, 251). The service page won
+ * on position by 0.6, so the query entered triage claiming 11 impressions,
+ * failed `impressions >= 30`, and was discarded on every run — 262
+ * impressions of demand, never once raised in the agent's lifetime. The same
+ * bug aimed drafts at the wrong URL: "paddock harrowing" reported 36
+ * impressions against post 70 when post 29 held 131 of them.
+ *
+ * The whole winning row is kept as GSC reported it, rather than summing
+ * impressions across pages. Summing needs ctr recomputed against the new
+ * denominator, and secondary pages ranking at 20+ with no clicks then drag
+ * the aggregate ctr below the meta_rewrite benchmark. That fires on healthy
+ * pages — the brand query "hampshire paddock management" sits at position
+ * 1.0 with 76% ctr on the homepage and was flagged for a meta rewrite once
+ * impressions from weaker pages were folded in. Position, ctr and
+ * impressions must all describe the same SERP row to stay comparable
+ * against `expectedCtrForPosition`.
  */
 export function groupByQuery(rows: Array<{ keys?: string[] } & Omit<GscRowPlus, 'query' | 'page'>>): GscRowPlus[] {
   const byQuery = new Map<string, GscRowPlus>();
   for (const r of rows) {
     const query = r.keys?.[0];
     if (!query) continue;
-    const page = r.keys?.[1];
     const existing = byQuery.get(query);
-    // Keep the row with the lowest (best) position for this query.
-    if (!existing || r.position < existing.position) {
+    // Most impressions wins; ties break toward the better-ranked page.
+    if (
+      !existing ||
+      r.impressions > existing.impressions ||
+      (r.impressions === existing.impressions && r.position < existing.position)
+    ) {
       byQuery.set(query, {
         query,
-        page,
+        page: r.keys?.[1],
         clicks: r.clicks,
         impressions: r.impressions,
         ctr: r.ctr,
