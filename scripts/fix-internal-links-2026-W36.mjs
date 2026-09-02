@@ -65,8 +65,14 @@ function normaliseUrl(url) {
   if (typeof url !== 'string') return null;
   let u = url.trim();
   if (u === '' || u === 'https://' || u === 'http://' || u === '#') return '';
-  if (u.startsWith(ORIGIN)) u = u.slice(ORIGIN.length) || '/';
-  else if (u.startsWith('https://www.hampshirepaddockmanagement.com')) u = u.slice('https://www.hampshirepaddockmanagement.com'.length) || '/';
+  for (const origin of [ORIGIN, 'https://www.hampshirepaddockmanagement.com', 'http://hampshirepaddockmanagement.com']) {
+    if (u.startsWith(origin)) {
+      u = u.slice(origin.length);
+      // "https://hampshirepaddockmanagement.com?utm_source=…" has no path at all
+      if (!u.startsWith('/')) u = `/${u}`;
+      break;
+    }
+  }
   if (!u.startsWith('/')) return null; // external — leave alone
   // Own-origin: drop querystring + hash cruft (utm_source=chatgpt.com etc.)
   const q = u.search(/[?#]/);
