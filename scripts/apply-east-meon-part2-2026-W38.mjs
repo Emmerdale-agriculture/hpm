@@ -12,9 +12,9 @@
  * "part 2 is live" line to part 1 so the two read as a series.
  *
  * What it does:
- *   1. Uploads eight job photos from SOURCE_DIR (default: the unzipped
- *      Untitled_Message.zip in the scratchpad; override with
- *      EAST_MEON_PHOTOS=/some/dir). Unlike the part 1 batch these already
+ *   1. Uploads eight job photos from SOURCE_DIR (default:
+ *      ~/photos/east-meon-part2, unpacked from Untitled_Message.zip;
+ *      override with EAST_MEON_PHOTOS=/some/dir). Unlike the part 1 batch these already
  *      have their rotation baked in (orientation=none on all eight), but we
  *      still run them through `sharp().rotate()` so the script stays correct
  *      if Tom re-exports them from a phone. Idempotent: an existing media doc
@@ -50,9 +50,7 @@ import { getPayload } from 'payload';
 import config from '../src/payload/payload.config.ts';
 
 const EXECUTE = process.argv.includes('--execute');
-const SOURCE_DIR =
-  process.env.EAST_MEON_PHOTOS ??
-  '/tmp/claude-1000/-home-tomos-hpm-site/1e0cebca-ae0d-43ce-ac0a-cd9c7f8366d7/scratchpad/eastmeon2';
+const SOURCE_DIR = process.env.EAST_MEON_PHOTOS ?? '/home/tomos/photos/east-meon-part2';
 
 const SLUG = 'east-meon-paddock-creation-stump-removal';
 const PART1_SLUG = 'clearing-overgrown-paddocks-east-meon';
