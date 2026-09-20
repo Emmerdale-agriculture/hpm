@@ -35,13 +35,23 @@
  *
  * Idempotent. Dry-run by default; pass --execute to write.
  *
+ * The S3 credentials the media upload needs are in .env.vercel, NOT
+ * .env.local — but .env.vercel's DATABASE_URL points at prod, so it can't
+ * just be passed to --env-file. Source the SUPABASE_S3_* lines out of it in
+ * a subshell and let --env-file=.env.local supply the rest. Without them the
+ * run dies on the first photo with an S3 AuthorizationHeaderMalformed and
+ * writes nothing.
+ *
  *   Local mirror:
- *     node_modules/.bin/tsx --env-file=.env.local scripts/apply-east-meon-part2-2026-W38.mjs
+ *     ( set -a; . <(grep -E '^SUPABASE_S3_' .env.vercel); set +a; \
+ *       node_modules/.bin/tsx --env-file=.env.local \
+ *       scripts/apply-east-meon-part2-2026-W38.mjs --execute )
  *
  *   Prod (dry-run first, then add --execute):
- *     DATABASE_URL="$(grep -m1 '^DATABASE_URL_PROD=' .env.local | cut -d= -f2- | tr -d '"')" \
+ *     ( set -a; . <(grep -E '^SUPABASE_S3_' .env.vercel); set +a; \
+ *       DATABASE_URL="$(grep -m1 '^DATABASE_URL_PROD=' .env.local | cut -d= -f2- | tr -d '"')" \
  *       node_modules/.bin/tsx --env-file=.env.local \
- *       scripts/apply-east-meon-part2-2026-W38.mjs --execute
+ *       scripts/apply-east-meon-part2-2026-W38.mjs --execute )
  */
 import fs from 'node:fs/promises';
 import path from 'node:path';
