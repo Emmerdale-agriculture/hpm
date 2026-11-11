@@ -148,6 +148,7 @@ function ServiceCard({ service }: { service: ServiceDoc }) {
             alt={alt}
             fill
             sizes="(max-width: 900px) 100vw, 33vw"
+            quality={60}
             style={{ objectFit: 'cover' }}
           />
         )}

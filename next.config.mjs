@@ -58,7 +58,10 @@ const nextConfig = {
     // concurrent Sharp jobs and saturated the dev optimizer (504s).
     // 828 fills the 640→1080 gap: card slots (~360px CSS) on 2x displays
     // need ~720px files and were jumping to 1080 (≈40% heavier).
-    deviceSizes: [640, 828, 1080, 1920],
+    // 1280 fills the 1080→1920 gap for 3x phones: a full-width slot on a
+    // 390px iPhone needs ~1170px and was jumping to 1920 (2.7x the pixels),
+    // so every full-width hero/card on mobile shipped a desktop-sized file.
+    deviceSizes: [640, 828, 1080, 1280, 1920],
     // Must not overlap deviceSizes — 640 here duplicated the 640w srcset entry.
     imageSizes: [256, 384],
     // Optimised variants otherwise inherit Supabase's max-age=3600, making
