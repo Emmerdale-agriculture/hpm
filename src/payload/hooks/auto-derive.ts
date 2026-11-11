@@ -133,7 +133,15 @@ export const autoDerive =
       /\s*[|–—-]\s*Hampshire Paddock Management\s*$/i,
       '',
     );
-    const plain = extractPlainText(data.content);
+    // Bodies pasted from Word often open with the title itself as a bold
+    // first line; deriving from that makes the snippet repeat the <title>
+    // (posts 76/77, Oct 2026: "Prostrate Knotweed in Horse Paddocks: …
+    // Prostrate knotweed …"). Skip a leading copy of the title.
+    const fullText = extractPlainText(data.content);
+    const plain =
+      title && fullText.toLowerCase().startsWith(title.toLowerCase())
+        ? fullText.slice(title.length).trim()
+        : fullText;
 
     // SEO meta title / description — fall back to title and body content.
     // metaTitle is used verbatim (absolute); the field maxes at 70 chars, so
