@@ -80,22 +80,57 @@ export async function findExistingOpportunity(
 }
 
 /**
- * Check whether an earlier week already produced this opportunity (still
- * pending or approved). Caller treats a hit as a signal to persist the
- * new opportunity as `superseded` and skip generation. Brief §10.
+ * How long a resolved opportunity keeps its query off the pending list.
+ * Long enough for a shipped change to be recrawled and show up in GSC
+ * (this site's recrawl lag runs to months), short enough that a fix which
+ * didn't work gets raised again.
+ */
+const RESOLVED_COOLDOWN_DAYS = 120;
+
+/**
+ * Check whether an earlier week already produced an opportunity for this
+ * query. Caller treats a hit as a signal to persist the new opportunity as
+ * `superseded` and skip generation. Brief §10.
+ *
+ * A hit is any opportunity for the same query, of ANY type, that is either
+ * still open (pending/approved) or was raised within the cooldown, whatever
+ * its outcome. Before 2026-11 this only matched open rows of the same type,
+ * so each monthly review's close-out wiped the slate and the next run
+ * re-raised (and re-drafted) the same queries: 38 of the first 66
+ * opportunities repeated an already-resolved query, "paddock maintenance"
+ * eight times, and the type flipped between meta_rewrite and on_page_tweak
+ * from run to run.
+ *
+ * Rows this function caused to be auto-superseded (status superseded, no
+ * decidedAt — a review always sets one) don't start a new cooldown, or a
+ * query that keeps coming up would renew its own suppression forever.
  */
 export async function findActivePriorOpportunity(
   payload: Payload,
   query: string,
-  type: string,
 ): Promise<number | null> {
+  const cutoff = new Date(Date.now() - RESOLVED_COOLDOWN_DAYS * 86_400_000).toISOString();
   const res = await payload.find({
     collection: 'seo-opportunities',
     where: {
       and: [
         { query: { equals: query } },
-        { type: { equals: type } },
-        { status: { in: ['pending', 'approved'] } },
+        {
+          or: [
+            { status: { in: ['pending', 'approved'] } },
+            {
+              and: [
+                { createdAt: { greater_than: cutoff } },
+                {
+                  or: [
+                    { status: { not_equals: 'superseded' } },
+                    { decidedAt: { exists: true } },
+                  ],
+                },
+              ],
+            },
+          ],
+        },
       ],
     },
     limit: 1,

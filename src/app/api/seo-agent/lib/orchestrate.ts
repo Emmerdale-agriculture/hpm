@@ -214,7 +214,7 @@ export async function runAgent(opts: RunOptions): Promise<AgentRunSummary> {
     let priorId: number | null = null;
     if (!opts.dryRun) {
       try {
-        priorId = await findActivePriorOpportunity(payload, item.row.query, item.type);
+        priorId = await findActivePriorOpportunity(payload, item.row.query);
       } catch (err) {
         // Skip — falling through with priorId=null would burn Anthropic
         // budget and persist a duplicate `pending` row when one already
