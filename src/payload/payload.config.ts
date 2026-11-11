@@ -17,6 +17,7 @@ import { Tools } from './collections/tools';
 import { Redirects } from './collections/redirects';
 import { Enquiries } from './collections/enquiries';
 import { SeoOpportunities } from './collections/seo-opportunities';
+import { Tenders } from './collections/tenders';
 
 import { Homepage } from './globals/homepage';
 import { SiteSettings } from './globals/site-settings';
@@ -69,6 +70,7 @@ export default buildConfig({
     Redirects,
     Enquiries,
     SeoOpportunities,
+    Tenders,
   ],
 
   globals: [Homepage, SiteSettings, PricingPage, GscAuth],
