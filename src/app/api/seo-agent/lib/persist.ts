@@ -46,6 +46,7 @@ export async function fetchExistingDocs(payload: Payload): Promise<ExistingDoc[]
       id: Number(d.id),
       slug: String(d.slug ?? ''),
       title: String(d.title ?? ''),
+      category: d.category ? String(d.category) : undefined,
     })),
     ...services.docs.map((d) => ({
       collection: 'services' as const,
@@ -161,6 +162,7 @@ export async function persistOpportunity(
   opp: Opportunity,
   runId: string,
   status: 'pending' | 'superseded',
+  extra?: { decidedAt?: string; notes?: string },
 ): Promise<PersistResult> {
   // Safety net: if another writer raced us, return the existing id.
   const racing = await findExistingOpportunity(payload, {
@@ -203,6 +205,8 @@ export async function persistOpportunity(
       relatedPost: postId,
       deferred: opp.type === 'new_article' ? Boolean(opp.deferred) : false,
       agentRunId: runId,
+      ...(extra?.decidedAt ? { decidedAt: extra.decidedAt } : {}),
+      ...(extra?.notes ? { notes: extra.notes } : {}),
     },
   });
 

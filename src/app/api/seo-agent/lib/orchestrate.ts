@@ -23,6 +23,8 @@ import {
   persistOpportunity,
   resolveTargetPage,
 } from './persist';
+import { fetchPageContext, type PageContext } from './page-context';
+import { reviewOutcomes } from './outcomes';
 import { articleScore, groupByQuery, isCompetitorQuery, triageRow } from './triage';
 import {
   expectedCtrForPosition,
@@ -32,6 +34,15 @@ import {
   type OpportunityType,
 } from './types';
 import type { ExistingDoc } from './cannibalisation';
+
+const SITE_ORIGIN = (process.env.NEXT_PUBLIC_SITE_URL ?? 'https://hampshirepaddockmanagement.com').replace(/\/$/, '');
+
+/** Public path for a Payload doc: services and posts (notes) are prefixed. */
+function docPath(d: ExistingDoc): string {
+  if (d.collection === 'services') return `/services/${d.slug}`;
+  if (d.collection === 'posts') return `/notes/${d.slug}`;
+  return `/${d.slug}`;
+}
 
 export type RunOptions = {
   dryRun: boolean;
@@ -47,7 +58,17 @@ export type RunOptions = {
 
 type WorkItem = {
   type: OpportunityType;
-  row: { query: string; page?: string; impressions: number; clicks: number; ctr: number; position: number };
+  row: {
+    query: string;
+    page?: string;
+    impressions: number;
+    clicks: number;
+    ctr: number;
+    position: number;
+    otherPages?: Array<{ page: string; impressions: number; position: number }>;
+  };
+  /** Same-page, same-type variants folded into this item (step 9). */
+  members?: WorkItem[];
   classification: Awaited<ReturnType<typeof classifyQuery>>;
   /** True for new_article rows past the per-week cap. Persisted with no draft. */
   deferred?: boolean;
@@ -92,7 +113,13 @@ export async function runAgent(opts: RunOptions): Promise<AgentRunSummary> {
     return emptySummary({ runId, weekIdentified, startedAt, gscRange, errors });
   }
   const servicePages = existing.filter((d) => d.collection === 'services').map((d) => d.slug);
-  const postSummaries = existing
+  // Commentary posts (Videscape/Clickasnap) draw search traffic but aren't
+  // the business: never optimise them, and keep them out of the prompts.
+  const commentarySlugs = new Set(
+    existing.filter((d) => d.collection === 'posts' && d.category === 'commentary').map((d) => d.slug),
+  );
+  const optimisable = existing.filter((d) => !(d.collection === 'posts' && d.category === 'commentary'));
+  const postSummaries = optimisable
     .filter((d) => d.collection === 'posts')
     .slice(0, 30)
     .map((d) => d.title);
@@ -100,8 +127,14 @@ export async function runAgent(opts: RunOptions): Promise<AgentRunSummary> {
 
   // 3) Triage + competitor filter
   const grouped = groupByQuery(rows);
+  const isCommentaryUrl = (url?: string) => {
+    if (!url) return false;
+    const leaf = url.replace(/[?#].*$/, '').replace(/\/+$/, '').split('/').pop() ?? '';
+    return /\/notes\//.test(url) && commentarySlugs.has(leaf);
+  };
   const triaged = grouped
     .filter((r) => !isCompetitorQuery(r.query))
+    .filter((r) => !isCommentaryUrl(r.page))
     .map((r) => ({ row: r, triage: triageRow(r) }))
     .filter((c): c is { row: typeof c.row; triage: Extract<typeof c.triage, { candidate: true }> } => c.triage.candidate);
 
@@ -136,6 +169,10 @@ export async function runAgent(opts: RunOptions): Promise<AgentRunSummary> {
   const promoted: WorkItem[] = [];
   for (const c of classified) {
     if (c.classification.type === 'skip') continue;
+    // Brand/navigational searches ("emmerdale agriculture" landing on
+    // /contact) aren't won with an extra H2 or a new article; at most the
+    // snippet is worth rewriting.
+    if (c.classification.intent === 'navigational' && c.suggestedType !== 'meta_rewrite') continue;
     if (
       c.suggestedType === 'new_article' &&
       (c.classification.intent === 'transactional' || c.classification.intent === 'local')
@@ -153,12 +190,15 @@ export async function runAgent(opts: RunOptions): Promise<AgentRunSummary> {
       others.push(cand);
       continue;
     }
-    const hit = findCollision(cand.row.query, undefined, existing);
+    // Commentary posts are never optimisation targets, so never collide with them.
+    const hit = findCollision(cand.row.query, undefined, optimisable);
     if (hit) {
       others.push({
         ...cand,
         type: 'on_page_tweak',
-        row: { ...cand.row, page: cand.row.page ?? `/${hit.doc.slug}` },
+        // Absolute URL: page-context fetch()es it and clustering keys on it,
+        // and GSC reports full URLs.
+        row: { ...cand.row, page: cand.row.page ?? `${SITE_ORIGIN}${docPath(hit.doc)}` },
       });
     } else {
       newArticleCands.push(cand);
@@ -186,45 +226,50 @@ export async function runAgent(opts: RunOptions): Promise<AgentRunSummary> {
     ...articlesDeferred,
   ];
 
-  // 9) Per-item: idempotency check → prior check → generate (if needed) → persist immediately
+  // 9) Per-item gates, cheapest first: idempotency (already raised this
+  //    week) → cooldown (raised/resolved recently). Items past both gates go
+  //    on to clustering; cooldown hits are recorded as superseded, no draft.
   const opportunities: Opportunity[] = [];
   const counts = { skipped: 0, superseded: 0 };
-  const siteMap = existing.map((d) => ({ slug: d.slug, title: d.title }));
+  const siteMap = optimisable.map((d) => ({ path: docPath(d), title: d.title }));
+  const heldBack: AgentRunSummary['heldBack'] = [];
 
+  // Gates are reads only, so a dry run applies them too — otherwise a dry
+  // run can't show which queries the cooldown is holding back.
+  const live: WorkItem[] = [];
   for (const item of work) {
-    // Idempotency: already done this week?
-    if (!opts.dryRun) {
-      try {
-        const exists = await findExistingOpportunity(payload, {
-          weekIdentified,
-          query: item.row.query,
-          type: item.type,
-        });
-        if (exists) {
-          counts.skipped++;
-          continue;
-        }
-      } catch (err) {
-        errors.push(`Idempotency check "${item.row.query}" failed: ${err instanceof Error ? err.message : String(err)}`);
+    try {
+      const exists = await findExistingOpportunity(payload, {
+        weekIdentified,
+        query: item.row.query,
+        type: item.type,
+      });
+      if (exists) {
+        counts.skipped++;
         continue;
       }
+    } catch (err) {
+      errors.push(`Idempotency check "${item.row.query}" failed: ${err instanceof Error ? err.message : String(err)}`);
+      continue;
     }
 
-    // Active prior from earlier week?
     let priorId: number | null = null;
-    if (!opts.dryRun) {
-      try {
-        priorId = await findActivePriorOpportunity(payload, item.row.query);
-      } catch (err) {
-        // Skip — falling through with priorId=null would burn Anthropic
-        // budget and persist a duplicate `pending` row when one already
-        // exists. Next week's run retries.
-        errors.push(`Prior check "${item.row.query}" failed: ${err instanceof Error ? err.message : String(err)}`);
-        continue;
-      }
+    try {
+      priorId = await findActivePriorOpportunity(payload, item.row.query);
+    } catch (err) {
+      // Skip — falling through with priorId=null would burn Anthropic
+      // budget and persist a duplicate `pending` row when one already
+      // exists. Next run retries.
+      errors.push(`Prior check "${item.row.query}" failed: ${err instanceof Error ? err.message : String(err)}`);
+      continue;
     }
-
-    // Build the opportunity (may have null draftContent)
+    if (!priorId) {
+      live.push(item);
+      continue;
+    }
+    heldBack.push({ query: item.row.query, type: item.type, priorId });
+    counts.superseded++;
+    if (opts.dryRun) continue;
     const opp = await buildOpportunity({
       item,
       weekIdentified,
@@ -233,21 +278,131 @@ export async function runAgent(opts: RunOptions): Promise<AgentRunSummary> {
       servicePages,
       postSummaries,
       budget,
-      // Skip Opus generation when superseded or deferred or budget exceeded
-      generate: !priorId && !item.deferred && !budget.exceeded(),
+      generate: false,
+      page: null,
     });
-    opportunities.push(opp);
-
-    if (opts.dryRun) continue;
-
     try {
-      const status: 'pending' | 'superseded' = priorId ? 'superseded' : 'pending';
-      const result = await persistOpportunity(payload, opp, runId, status);
-      if (status === 'superseded') counts.superseded++;
+      const result = await persistOpportunity(payload, opp, runId, 'superseded');
       if (result.postError) errors.push(`"${opp.query}": ${result.postError}`);
     } catch (err) {
       errors.push(`Persist "${opp.query}" failed: ${err instanceof Error ? err.message : String(err)}`);
     }
+  }
+
+  // 10) Cluster same-page, same-type items. GSC splits one intent into many
+  //     strings — "paddock harrowing", "grass harrowing", "harrowing grass",
+  //     "harrowing a field" were 4 rows aimed at post 29 in W44 alone, each
+  //     with its own Opus draft proposing much the same section. Now the
+  //     highest-impression query leads, one draft serves all of them, and
+  //     the rest are recorded as superseded members (so the cooldown covers
+  //     every variant, not just the lead).
+  const clustered: WorkItem[] = [];
+  const byKey = new Map<string, WorkItem>();
+  for (const item of live) {
+    if (item.type === 'new_article' || !item.row.page) {
+      clustered.push(item);
+      continue;
+    }
+    const key = `${item.type}|${item.row.page}`;
+    const lead = byKey.get(key);
+    if (!lead) {
+      const fresh = { ...item, members: [] };
+      byKey.set(key, fresh);
+      clustered.push(fresh);
+    } else if (item.row.impressions > lead.row.impressions) {
+      // Promote: the new item leads, the old lead becomes a member.
+      const promoted = { ...item, members: [{ ...lead, members: undefined }, ...(lead.members ?? [])] };
+      byKey.set(key, promoted);
+      clustered[clustered.indexOf(lead)] = promoted;
+    } else {
+      lead.members!.push(item);
+    }
+  }
+
+  // 11) Fetch every lead's page up front, in parallel (each capped at 10s),
+  //     so serial fetches can't eat the 300s function budget. Then generate +
+  //     persist each lead immediately (timeout-safe).
+  const pageUrls = Array.from(
+    new Set(clustered.filter((w) => w.type !== 'new_article' && !w.deferred && w.row.page).map((w) => w.row.page!)),
+  );
+  const pages = new Map(
+    await Promise.all(pageUrls.map(async (u) => [u, await fetchPageContext(u)] as const)),
+  );
+
+  for (const item of clustered) {
+    const generate = !item.deferred && !budget.exceeded();
+    const page = generate && item.type !== 'new_article' && item.row.page ? (pages.get(item.row.page) ?? null) : null;
+    if (generate && item.type !== 'new_article' && item.row.page && !page) {
+      errors.push(`Page fetch failed for ${item.row.page} — "${item.row.query}" drafted from title only`);
+    }
+    const opp = await buildOpportunity({
+      item,
+      weekIdentified,
+      existing,
+      siteMap,
+      servicePages,
+      postSummaries,
+      budget,
+      generate,
+      page,
+    });
+    opportunities.push(opp);
+    if (opts.dryRun) continue;
+
+    let leadId: number | null = null;
+    try {
+      const result = await persistOpportunity(payload, opp, runId, 'pending');
+      leadId = result.opportunityId;
+      if (result.postError) errors.push(`"${opp.query}": ${result.postError}`);
+    } catch (err) {
+      errors.push(`Persist "${opp.query}" failed: ${err instanceof Error ? err.message : String(err)}`);
+      continue;
+    }
+    // Only a lead with a draft covers its variants. Without one (budget hit,
+    // generation failed) the members are recorded but don't start a cooldown,
+    // so they can come back next run instead of hiding behind an empty lead.
+    const covered = opp.draftContent !== null;
+    for (const member of item.members ?? []) {
+      const memberOpp = await buildOpportunity({
+        item: member,
+        weekIdentified,
+        existing,
+        siteMap,
+        servicePages,
+        postSummaries,
+        budget,
+        generate: false,
+        page: null,
+      });
+      try {
+        // decidedAt marks this as a real decision (the agent merged it), so
+        // findActivePriorOpportunity starts its cooldown — unlike plain
+        // auto-superseded rows, which deliberately don't.
+        await persistOpportunity(
+          payload,
+          memberOpp,
+          runId,
+          'superseded',
+          covered
+            ? {
+                decidedAt: new Date().toISOString(),
+                notes: `Clustered into #${leadId} ("${opp.query}"): same page, one draft covers both.`,
+              }
+            : { notes: `Clustered into #${leadId} ("${opp.query}"), but the lead has no draft; not held back.` },
+        );
+      } catch (err) {
+        errors.push(`Persist member "${member.row.query}" failed: ${err instanceof Error ? err.message : String(err)}`);
+      }
+    }
+  }
+
+  // 12) Did earlier changes work? DB + the GSC rows already pulled, plus an
+  //     exact lookup for any query that fell below the pull's row cap.
+  let outcomes: AgentRunSummary['outcomes'] = [];
+  try {
+    outcomes = await reviewOutcomes(payload, grouped, gscRange);
+  } catch (err) {
+    errors.push(`Outcome review failed: ${err instanceof Error ? err.message : String(err)}`);
   }
 
   const finishedAt = new Date();
@@ -273,11 +428,14 @@ export async function runAgent(opts: RunOptions): Promise<AgentRunSummary> {
         depth: 0,
       });
       const docs = persisted.docs;
+      // Type counts are OPEN work only; superseded rows (cooldown hits and
+      // cluster members) used to inflate "found N opportunities".
+      const open = docs.filter((d) => d.status !== 'superseded');
       weekTotals = {
-        metaRewrites: docs.filter((d) => d.type === 'meta_rewrite').length,
-        onPageTweaks: docs.filter((d) => d.type === 'on_page_tweak').length,
-        newArticles: docs.filter((d) => d.type === 'new_article' && !d.deferred).length,
-        deferred: docs.filter((d) => d.type === 'new_article' && d.deferred === true).length,
+        metaRewrites: open.filter((d) => d.type === 'meta_rewrite').length,
+        onPageTweaks: open.filter((d) => d.type === 'on_page_tweak').length,
+        newArticles: open.filter((d) => d.type === 'new_article' && !d.deferred).length,
+        deferred: open.filter((d) => d.type === 'new_article' && d.deferred === true).length,
         superseded: docs.filter((d) => d.status === 'superseded').length,
       };
     } catch (err) {
@@ -297,6 +455,8 @@ export async function runAgent(opts: RunOptions): Promise<AgentRunSummary> {
       ...weekTotals,
     },
     opportunities,
+    heldBack,
+    outcomes,
     errors,
   };
 }
@@ -305,13 +465,33 @@ async function buildOpportunity(args: {
   item: WorkItem;
   weekIdentified: string;
   existing: ExistingDoc[];
-  siteMap: Array<{ slug: string; title: string }>;
+  siteMap: Array<{ path: string; title: string }>;
   servicePages: string[];
   postSummaries: string[];
   budget: TokenBudget;
   generate: boolean;
+  page: PageContext | null;
 }): Promise<Opportunity> {
-  const { item, weekIdentified, existing, siteMap, servicePages, postSummaries, budget, generate } = args;
+  const { item, weekIdentified, existing, siteMap, servicePages, postSummaries, budget, generate, page } = args;
+  const relatedQueries = (item.members ?? []).map((m) => ({
+    query: m.row.query,
+    impressions: m.row.impressions,
+    position: m.row.position,
+  }));
+  const competingPages = item.row.otherPages ?? [];
+  const relatedLines = relatedQueries.map(
+    (r) => `${r.query} (${r.impressions} imp, pos ${r.position.toFixed(1)})`,
+  );
+  const competingLines = competingPages.map(
+    (p) => `${p.page} (${p.impressions} imp, pos ${p.position.toFixed(1)})`,
+  );
+  const rationale = [
+    item.classification.rationale,
+    relatedLines.length ? `Also covers: ${relatedLines.join('; ')}.` : '',
+    competingLines.length ? `SPLIT — Google also shows: ${competingLines.join('; ')}. Check which page should own this query before adding copy.` : '',
+  ]
+    .filter(Boolean)
+    .join('\n');
   const target = resolveTargetPage(item.row.page, existing);
   const targetDoc = target ? existing.find((d) => d.id === target.id) : undefined;
   const baseMetrics = {
@@ -324,7 +504,9 @@ async function buildOpportunity(args: {
     query: item.row.query,
     intent: item.classification.intent,
     weekIdentified,
-    rationale: item.classification.rationale,
+    rationale,
+    relatedQueries: relatedQueries.length ? relatedQueries : undefined,
+    competingPages: competingPages.length ? competingPages : undefined,
     targetPageSlug: targetDoc?.slug,
     targetPageId: target?.id,
     targetPageCollection: target?.collection,
@@ -336,11 +518,13 @@ async function buildOpportunity(args: {
       ? await generateMetaRewrite(
           {
             query: item.row.query,
+            relatedQueries: relatedLines,
             url: item.row.page ?? '',
             currentTitle: targetDoc?.title ?? '',
             currentMeta: '',
             ctr: item.row.ctr,
             expectedCtr: expected,
+            page,
           },
           budget,
         )
@@ -358,10 +542,13 @@ async function buildOpportunity(args: {
       ? await generateOnPageTweak(
           {
             query: item.row.query,
+            relatedQueries: relatedLines,
+            competingPages: competingLines,
             url: item.row.page ?? '',
-            excerpt: targetDoc?.title ?? '', // v1: title only; full-content fetch is v2
+            excerpt: targetDoc?.title ?? '',
             position: item.row.position,
             siteMap,
+            page,
           },
           budget,
         )
@@ -420,6 +607,8 @@ function emptySummary(args: {
       superseded: 0,
     },
     opportunities: [],
+    heldBack: [],
+    outcomes: [],
     errors: args.errors,
   };
 }

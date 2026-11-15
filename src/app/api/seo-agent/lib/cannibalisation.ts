@@ -66,6 +66,8 @@ export type ExistingDoc = {
   id: number;
   slug: string;
   title: string;
+  /** Posts only — 'commentary' posts are excluded from optimisation. */
+  category?: string;
 };
 
 export type CannibalisationHit = {

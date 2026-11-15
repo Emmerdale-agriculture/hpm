@@ -10,7 +10,7 @@
 import { callJson, HAIKU_MODEL, type TokenBudget } from './anthropic';
 import type { Classification, GscRowPlus, Intent, ClassifierVerdict } from './types';
 
-const SYSTEM = `You are an SEO intent classifier for Hampshire Paddock Management, a paddock and land management contractor in Hampshire, UK. Services: paddock topping, fertiliser application, weed control, harrowing, rolling, and equestrian fencing.
+const SYSTEM = `You are an SEO intent classifier for Hampshire Paddock Management, a paddock and land management contractor in Hampshire, UK. The current service pages are listed with each query — treat that list as the full set of services (there is no fencing service).
 
 You receive search queries and classify them on two axes:
 

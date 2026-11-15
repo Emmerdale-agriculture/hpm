@@ -203,3 +203,32 @@ non-empty. Common ones:
 3. **Week 3** — enable digest. Full system live.
 4. **Week 4+** — weekly review. After 4 stable weeks, consider relaxing
    draft-only for `meta_rewrite` only (lowest-risk category).
+
+## 2026-11 changes (after reviewing W19–W44 output)
+
+What the first 66 opportunities showed: 38 repeated a resolved query (fixed in
+e305e65 with a 120-day cooldown), drafts invented facts and re-proposed FAQs the
+page already had, and one intent arrived as 4–6 separate queries each with its
+own draft. Changes:
+
+- **Drafts read the live page** (`lib/page-context.ts`): title, meta, headings,
+  questions already answered, links already present, body text, and the service
+  sidebar (equipment + timing). Prompts require claims to be grounded in it;
+  `validateOnPage` drops FAQs/links the page already has.
+- **Same-page clustering**: same type + same target URL → one opportunity led by
+  the highest-impression query; the variants are stored as `superseded` rows with
+  `decidedAt` set and a "Clustered into #N" note, so the cooldown covers them.
+- **Split detection**: `groupByQuery` keeps other URLs holding ≥10 impressions and
+  ≥20% of the primary's as `competingPages`; shown as "⚠ split" in the digest and
+  rationale. That's usually cannibalisation, which more copy won't fix.
+- **Outcome check**: the digest re-measures completed opportunities decided 6–26
+  weeks ago against this run's GSC pull (`lib/outcomes.ts`): improved/flat/worse/gone.
+- Commentary posts are excluded from triage and prompts; navigational queries only
+  qualify for meta rewrites. Digest counts open work only (superseded rows no longer
+  inflate them).
+- The cost table had Opus at $15/$75 (real: $5/$25), so the $2.50 cap tripped at ~$0.83.
+- Page context parses `<body>` minus chrome (header/nav/footer/`#mobile-menu`/aria-hidden), and reads equipment
+  and timing ONLY from the `[data-page-facts]` aside in `ServiceBody.tsx`. Remove that attribute and drafts lose
+  their equipment ground truth. Link suggestions are full site paths, and are de-duplicated by path.
+- Cluster members only start a cooldown when the lead got a draft. Dry runs apply the (read-only) cooldown
+  gates, and the digest lists held-back queries. Outcome "gone" is confirmed with an exact GSC lookup first.
