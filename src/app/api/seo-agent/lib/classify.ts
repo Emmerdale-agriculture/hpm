@@ -1,7 +1,7 @@
 /**
  * Classifier — assigns intent + opportunity type to a triaged query.
  *
- * Uses Claude Haiku 4.5 (cheap, fast). System prompt is cached so 50+
+ * Uses Claude Haiku 5.5 (cheap, fast). System prompt is cached so 50+
  * classifications in a single run share the prompt cost.
  *
  * Output is strict JSON; see types.Classification.
@@ -57,7 +57,7 @@ export async function classifyQuery(
     model: HAIKU_MODEL,
     system: SYSTEM,
     user,
-    maxTokens: 400,
+    maxTokens: 4000, // room for thinking; Haiku 5.5 thinks before answering
     budget,
   });
 

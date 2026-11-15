@@ -2,8 +2,12 @@
  * Shared Anthropic client + prompt-cache-friendly helper.
  *
  * Models:
- *   - Haiku 4.5 (claude-haiku-4-5) for the per-query classifier (cheap, fast).
- *   - Opus 4.7 (claude-opus-4-7)  for draft generation (high quality).
+ *   - Haiku 5.5 (claude-haiku-5-5) for the per-query classifier, effort low.
+ *   - Opus 5.5 (claude-opus-5-5)   for drafts, effort medium.
+ *
+ * Both think before answering (adaptive, always on for Opus 5.5). Thinking
+ * counts toward max_tokens, so callers' limits are sized for it, and drafts
+ * are slower than on 4.7: every call is clamped to the run's stop time.
  *
  * Cost guard: tokenBudget tracks input+output tokens spent in a single
  * agent run. Caller can abort before generating more drafts when it gets
@@ -12,8 +16,8 @@
 
 import Anthropic from '@anthropic-ai/sdk';
 
-export const HAIKU_MODEL = 'claude-haiku-4-5';
-export const OPUS_MODEL = 'claude-opus-4-7';
+export const HAIKU_MODEL = 'claude-haiku-5-5';
+export const OPUS_MODEL = 'claude-opus-5-5';
 
 let cached: Anthropic | null = null;
 
@@ -27,16 +31,27 @@ export function getAnthropic(): Anthropic {
 
 /** Rough token-cost tracker. Per-million prices, approximate. */
 const PRICE_PER_M: Record<string, { input: number; output: number }> = {
-  [HAIKU_MODEL]: { input: 1.0, output: 5.0 }, // USD per million
-  // Opus 4.7 is $5/$25. This said $15/$75 (Opus 4.1-era pricing), so the
-  // $2.50 soft cap tripped after ~$0.83 of real spend and starved drafts.
-  [OPUS_MODEL]: { input: 5.0, output: 25.0 },
+  // USD per million. Haiku 5.5's rate is for prompts under 100K tokens
+  // (ours are a few K). Keep these current: a stale table (Opus 4.1-era
+  // $15/$75) once tripped the $2.50 cap after ~$0.83 of real spend.
+  [HAIKU_MODEL]: { input: 0.1, output: 0.5 },
+  [OPUS_MODEL]: { input: 4.0, output: 20.0 },
 };
 
 export class TokenBudget {
   private spendUsd = 0;
-  /** Soft cap in USD. Brief: £2/run, ~$2.50. */
-  constructor(private readonly capUsd: number = 2.5) {}
+  /**
+   * capUsd: soft cap, brief £2/run ≈ $2.50. stopAt: epoch ms by which every
+   * call must have returned, so the run persists inside maxDuration (300s).
+   */
+  constructor(
+    private readonly capUsd: number = 2.5,
+    private readonly stopAt: number = Number.POSITIVE_INFINITY,
+  ) {}
+
+  msLeft(): number {
+    return this.stopAt - Date.now();
+  }
 
   add(model: string, inputTokens: number, outputTokens: number) {
     const price = PRICE_PER_M[model] ?? PRICE_PER_M[OPUS_MODEL];
@@ -68,12 +83,14 @@ export async function callJson<T>(args: {
 }): Promise<T> {
   const { model, system, user, maxTokens, budget } = args;
   const client = getAnthropic();
+  const effort = model === HAIKU_MODEL ? 'low' : 'medium';
 
   let lastErr: unknown;
   for (let attempt = 0; attempt < 2; attempt++) {
+    // Never past the run's stop time. Drafts think first, so allow 120s.
+    const timeout = Math.min(120_000, budget?.msLeft() ?? 120_000);
+    if (timeout < 20_000) throw new Error('Out of time for this run');
     try {
-      // Hard ceiling so a stalled upstream can't burn the whole 5-min
-      // function budget. Opus drafts can take ~30s, so 90s is generous.
       const res = await client.messages.create(
         {
           model,
@@ -87,12 +104,19 @@ export async function callJson<T>(args: {
             },
           ],
           messages: [{ role: 'user', content: user }],
+          output_config: { effort },
         },
-        { timeout: 90_000 },
+        { timeout, maxRetries: 0 },
       );
 
       if (budget) {
         budget.add(model, res.usage.input_tokens, res.usage.output_tokens);
+      }
+
+      // Not worth a retry: the same prompt refuses or overruns again.
+      if (res.stop_reason === 'refusal' || res.stop_reason === 'max_tokens') {
+        lastErr = new Error(`Claude stopped: ${res.stop_reason}`);
+        break;
       }
 
       const text = res.content
