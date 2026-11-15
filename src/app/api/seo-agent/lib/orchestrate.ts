@@ -81,7 +81,9 @@ export async function runAgent(opts: RunOptions): Promise<AgentRunSummary> {
   const articleCap = opts.articleCap ?? 3;
   const weekIdentified = isoWeekLabel(opts.now ?? startedAt);
   const errors: string[] = [];
-  const budget = new TokenBudget(opts.budgetUsd ?? 2.5);
+  // Stop at 270s: drafts are sequential and each thinks first, so a run
+  // with many leads must stop starting calls before maxDuration (300s).
+  const budget = new TokenBudget(opts.budgetUsd ?? 2.5, startedAt.getTime() + 270_000);
 
   const gscRange = {
     start: isoDaysAgo(lookback),
@@ -148,18 +150,31 @@ export async function runAgent(opts: RunOptions): Promise<AgentRunSummary> {
     suggestedType: OpportunityType;
     classification: Awaited<ReturnType<typeof classifyQuery>>;
   }> = [];
-  for (const c of triaged) {
-    if (budget.exceeded()) {
-      errors.push(`Budget exceeded after ${classified.length} classifications`);
-      break;
-    }
-    try {
-      const classification = await classifyQuery(c.row, ctx, budget);
-      classified.push({ row: c.row, suggestedType: c.triage.suggestedType, classification });
-    } catch (err) {
-      errors.push(`Classify "${c.row.query}" failed: ${err instanceof Error ? err.message : String(err)}`);
-    }
-  }
+  // Four at a time: Haiku 5.5 thinks before answering, and 30 serial calls
+  // would eat the time drafts need. Results keep triage order.
+  const slots: Array<(typeof classified)[number] | null> = new Array(triaged.length).fill(null);
+  let nextIdx = 0;
+  let budgetNoted = false;
+  await Promise.all(
+    Array.from({ length: Math.min(4, triaged.length) }, async () => {
+      while (nextIdx < triaged.length) {
+        const i = nextIdx++;
+        const c = triaged[i];
+        if (budget.exceeded()) {
+          if (!budgetNoted) errors.push(`Budget exceeded during classification`);
+          budgetNoted = true;
+          return;
+        }
+        try {
+          const classification = await classifyQuery(c.row, ctx, budget);
+          slots[i] = { row: c.row, suggestedType: c.triage.suggestedType, classification };
+        } catch (err) {
+          errors.push(`Classify "${c.row.query}" failed: ${err instanceof Error ? err.message : String(err)}`);
+        }
+      }
+    }),
+  );
+  for (const x of slots) if (x) classified.push(x);
 
   // 5) Promote to typed candidates. Type is authoritative from triage's
   //    position bands; the classifier only gates keep/skip and supplies intent.
@@ -330,7 +345,7 @@ export async function runAgent(opts: RunOptions): Promise<AgentRunSummary> {
   );
 
   for (const item of clustered) {
-    const generate = !item.deferred && !budget.exceeded();
+    const generate = !item.deferred && !budget.exceeded() && budget.msLeft() > 60_000;
     const page = generate && item.type !== 'new_article' && item.row.page ? (pages.get(item.row.page) ?? null) : null;
     if (generate && item.type !== 'new_article' && item.row.page && !page) {
       errors.push(`Page fetch failed for ${item.row.page} — "${item.row.query}" drafted from title only`);

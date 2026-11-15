@@ -1,5 +1,5 @@
 /**
- * Draft generation — Opus 4.7 for all three opportunity types.
+ * Draft generation — Opus 5.5 for all three opportunity types.
  *
  * Each function returns the structured draft or `null` if generation
  * failed twice. The caller persists null drafts as `pending` so Tom
@@ -108,7 +108,7 @@ export async function generateArticle(
         `Existing posts to avoid duplicating: ${args.existingPostsSummary || 'none'}`,
         `Why this query was selected: ${args.rationale}`,
       ].join('\n'),
-      maxTokens: 4000,
+      maxTokens: 16000,
       budget,
     });
     return validateArticle(draft);
@@ -147,7 +147,7 @@ export async function generateMetaRewrite(
           ? formatPageContext(args.page)
           : `Current title: ${args.currentTitle}\nCurrent meta: ${args.currentMeta || '(unknown — page fetch failed)'}`,
       ].join('\n\n'),
-      maxTokens: 1200,
+      maxTokens: 8000,
       budget,
     });
     return validateMeta(draft);
@@ -195,7 +195,7 @@ export async function generateOnPageTweak(
           .map((p) => `${p.path} — ${p.title}`)
           .join('; ')}`,
       ].join('\n\n'),
-      maxTokens: 2500,
+      maxTokens: 12000,
       budget,
     });
     return validateOnPage(draft, args.page, args.siteMap, args.url);
