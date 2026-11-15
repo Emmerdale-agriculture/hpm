@@ -7,6 +7,7 @@
  */
 
 import { callJson, OPUS_MODEL, type TokenBudget } from './anthropic';
+import { formatPageContext, normalisePath, type PageContext } from './page-context';
 import type {
   MetaRewriteDraft,
   OnPageTweakDraft,
@@ -49,6 +50,9 @@ CONSTRAINTS:
 - British English.
 - Do not promise prices, speed, or guarantees.
 - Include the geographic qualifier (Hampshire / South of England) where it fits naturally.
+- You are given the page's current title, meta and body. Every claim must be supported by the page body or sidebar; never name a machine, service or timing the page doesn't.
+- Each alternative must differ materially from the current title/meta — re-wording the same pitch won't move CTR.
+- If several queries are listed, they share this one SERP listing: write for the primary query without making the copy unreadable for the others.
 
 OUTPUT (strict JSON):
 {
@@ -61,10 +65,16 @@ OUTPUT (strict JSON):
 
 const ONPAGE_SYSTEM = `You suggest specific, surgical content additions for a page that ranks in striking distance for a query but isn't winning. Suggestions must be applicable without restructuring the page.
 
+You are given the page's live content: its headings, the questions it already answers, the internal links already on it, its body, and (for service pages) a sidebar of equipment and timing facts.
+
 CONSTRAINTS:
 - Hampshire Paddock Management voice: plain English, contractor-confident, no hype.
 - British English. No invented stats, quotes, or prices.
-- Internal link suggestions must use slugs from the site map provided.
+- Ground every factual claim (machinery, depths, timings, frequencies) in the page body or sidebar. If the page doesn't state a fact you'd need, write around it rather than supplying a number or a machine. The sidebar's equipment list is the complete list of machines — never mention one that isn't on it.
+- Do not propose an H2 or FAQ that the page already covers, even reworded. Fill a gap the existing headings leave for the query. Return an empty faqAdditions array rather than repeat a question already answered.
+- Do not suggest links the page already has. Internal link suggestions must use a path exactly as listed in the site map (e.g. "/services/harrowing", "/notes/…"), in the "slug" field.
+- If several queries are listed, they are variants Google already serves this page for; one addition should serve them together.
+- If another URL on the site also ranks for the query, say in the rationale which page should own it and whether that page needs a link to this one (or vice versa). Cannibalisation is often the real problem, not missing copy.
 
 OUTPUT (strict JSON):
 {
@@ -110,11 +120,14 @@ export async function generateArticle(
 
 export type GenerateMetaArgs = {
   query: string;
+  /** Other queries the same page is served for, with impressions. */
+  relatedQueries?: string[];
   url: string;
   currentTitle: string;
   currentMeta: string;
   ctr: number;
   expectedCtr: number;
+  page?: PageContext | null;
 };
 
 export async function generateMetaRewrite(
@@ -127,11 +140,13 @@ export async function generateMetaRewrite(
       system: META_SYSTEM,
       user: [
         `Target query: ${args.query}`,
+        ...(args.relatedQueries?.length ? [`Other queries this page is served for: ${args.relatedQueries.join('; ')}`] : []),
         `Current page URL: ${args.url}`,
-        `Current title: ${args.currentTitle}`,
-        `Current meta: ${args.currentMeta}`,
         `Current CTR: ${(args.ctr * 100).toFixed(2)}% (expected at this position: ${(args.expectedCtr * 100).toFixed(0)}%)`,
-      ].join('\n'),
+        args.page
+          ? formatPageContext(args.page)
+          : `Current title: ${args.currentTitle}\nCurrent meta: ${args.currentMeta || '(unknown — page fetch failed)'}`,
+      ].join('\n\n'),
       maxTokens: 1200,
       budget,
     });
@@ -144,10 +159,17 @@ export async function generateMetaRewrite(
 
 export type GenerateOnPageArgs = {
   query: string;
+  /** Other queries the same page is served for, with impressions/position. */
+  relatedQueries?: string[];
+  /** Other site URLs Google also shows for the primary query. */
+  competingPages?: string[];
   url: string;
+  /** Fallback when the live fetch fails: the page title. */
   excerpt: string;
   position: number;
-  siteMap: Array<{ slug: string; title: string }>;
+  /** Site pages as full paths ("/services/x", "/notes/y", "/z"). */
+  siteMap: Array<{ path: string; title: string }>;
+  page?: PageContext | null;
 };
 
 export async function generateOnPageTweak(
@@ -160,17 +182,23 @@ export async function generateOnPageTweak(
       system: ONPAGE_SYSTEM,
       user: [
         `Target query: ${args.query}`,
+        ...(args.relatedQueries?.length ? [`Other queries this page is served for: ${args.relatedQueries.join('; ')}`] : []),
+        ...(args.competingPages?.length
+          ? [`Other URLs on this site Google also shows for the target query: ${args.competingPages.join('; ')}`]
+          : []),
         `Page URL: ${args.url}`,
-        `Page current H1 + first 500 words: ${args.excerpt}`,
         `Current position: ${args.position.toFixed(1)}`,
+        args.page
+          ? formatPageContext(args.page)
+          : `Page title (live fetch failed — you have no body; keep suggestions generic and claim no specifics): ${args.excerpt}`,
         `Other pages on the site (for internal linking): ${args.siteMap
-          .map((p) => `${p.slug} — ${p.title}`)
+          .map((p) => `${p.path} — ${p.title}`)
           .join('; ')}`,
-      ].join('\n'),
-      maxTokens: 1500,
+      ].join('\n\n'),
+      maxTokens: 2500,
       budget,
     });
-    return draft;
+    return validateOnPage(draft, args.page, args.siteMap, args.url);
   } catch (err) {
     console.error('[seo-agent] generateOnPageTweak failed', err);
     return null;
@@ -215,6 +243,46 @@ function validateArticle(d: NewArticleDraft): NewArticleDraft | null {
     d.metaDescription = trimMeta(d.metaDescription, 155);
   }
   if (!Array.isArray(d.suggestedInternalLinks)) d.suggestedInternalLinks = [];
+  return d;
+}
+
+/**
+ * Belt and braces on the prompt rules: drop FAQ questions and links the page
+ * already has. Normalised comparison catches case/punctuation re-wordings;
+ * a genuinely reworded duplicate still needs Tom's eye.
+ */
+function validateOnPage(
+  d: OnPageTweakDraft,
+  page: PageContext | null | undefined,
+  siteMap: Array<{ path: string; title: string }>,
+  pageUrl: string,
+): OnPageTweakDraft | null {
+  if (!d || !d.newH2) return null;
+  if (!Array.isArray(d.faqAdditions)) d.faqAdditions = [];
+  if (!Array.isArray(d.internalLinksToAdd)) d.internalLinksToAdd = [];
+
+  // Resolve each suggested link to a full site path. Comparing leaf slugs
+  // alone conflated /notes/paddock-topping with /services/paddock-topping.
+  // A bare slug is accepted only when exactly one site page ends in it.
+  const known = new Set(siteMap.map((p) => normalisePath(p.path)));
+  const resolve = (raw: string): string | null => {
+    const asPath = normalisePath(raw);
+    if (known.has(asPath)) return asPath;
+    const leaf = asPath.split('/').pop();
+    const hits = siteMap.map((p) => normalisePath(p.path)).filter((p) => p.split('/').pop() === leaf);
+    return hits.length === 1 ? hits[0] : null;
+  };
+  const self = normalisePath(pageUrl || '/');
+  const linked = new Set(page?.internalLinks ?? []);
+  d.internalLinksToAdd = d.internalLinksToAdd
+    .map((l) => (l?.slug ? { ...l, slug: resolve(l.slug) ?? '' } : null))
+    .filter((l): l is NonNullable<typeof l> => Boolean(l && l.slug && l.slug !== self && !linked.has(l.slug)));
+
+  if (page) {
+    const norm = (q: string) => q.toLowerCase().replace(/[^a-z0-9 ]/g, '').replace(/\s+/g, ' ').trim();
+    const asked = new Set(page.existingQuestions.map(norm));
+    d.faqAdditions = d.faqAdditions.filter((f) => f?.question && !asked.has(norm(f.question)));
+  }
   return d;
 }
 

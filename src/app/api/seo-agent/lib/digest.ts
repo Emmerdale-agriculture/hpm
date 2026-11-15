@@ -1,10 +1,10 @@
 /**
- * Digest email — sent every Monday after the cron, even when no
+ * Digest email — sent after each monthly cron run, even when no
  * opportunities exist. Silence makes the system feel broken (brief §9).
  */
 
 import { Resend } from 'resend';
-import type { AgentRunSummary } from './types';
+import type { AgentRunSummary, OutcomeCheck } from './types';
 
 export type DigestArgs = {
   summary: AgentRunSummary;
@@ -48,16 +48,16 @@ export function composeDigest(args: DigestArgs): { subject: string; html: string
 
   const subject =
     total === 0
-      ? `HPM SEO — quiet week, no new opportunities`
-      : `HPM SEO — ${total} opportunit${total === 1 ? 'y' : 'ies'} for week ${summary.weekIdentified}`;
+      ? `HPM SEO — quiet month, no new opportunities`
+      : `HPM SEO — ${total} opportunit${total === 1 ? 'y' : 'ies'} (${summary.weekIdentified})`;
 
   const adminUrl = `${siteUrl.replace(/\/$/, '')}/admin/collections/seo-opportunities?where[status][equals]=pending`;
   const errorsLine = summary.errors.length ? ` (errors: ${summary.errors.length})` : '';
 
   const summaryLine =
     total === 0
-      ? `The agent ran clean but found no opportunities this week${errorsLine}.`
-      : `This week the agent found ${summary.counts.metaRewrites} meta rewrite${summary.counts.metaRewrites === 1 ? '' : 's'}, ${summary.counts.onPageTweaks} on-page tweak${summary.counts.onPageTweaks === 1 ? '' : 's'}, and ${summary.counts.newArticles} new article draft${summary.counts.newArticles === 1 ? '' : 's'}${errorsLine}.`;
+      ? `The agent ran clean but found no new opportunities${errorsLine}. Queries raised in the last 120 days are held back while their changes get recrawled, so quiet months are expected.`
+      : `This run the agent found ${summary.counts.metaRewrites} meta rewrite${summary.counts.metaRewrites === 1 ? '' : 's'}, ${summary.counts.onPageTweaks} on-page tweak${summary.counts.onPageTweaks === 1 ? '' : 's'}, and ${summary.counts.newArticles} new article draft${summary.counts.newArticles === 1 ? '' : 's'}${errorsLine}.`;
 
   const sections = [
     sectionFor('Meta rewrites', summary, 'meta_rewrite'),
@@ -71,7 +71,12 @@ export function composeDigest(args: DigestArgs): { subject: string; html: string
     ? `\n\nErrors during run:\n${summary.errors.map((e) => `- ${e}`).join('\n')}`
     : '';
 
-  const text = `${summaryLine}\n\n${sections}${errorsBlock}\n\nReview pending opportunities: ${adminUrl}\n\nAgent run at ${summary.finishedAt}, week ${summary.weekIdentified}, GSC data covers ${summary.gscRange.start} to ${summary.gscRange.end}.`;
+  const outcomesText = outcomesSection(summary.outcomes ?? []);
+  const held = summary.heldBack ?? [];
+  const heldLine = held.length
+    ? `Held back (raised or resolved in the last 120 days, no new draft): ${held.map((h) => `${h.query} (#${h.priorId})`).join(', ')}.`
+    : '';
+  const text = `${summaryLine}\n\n${sections}${heldLine ? `\n\n${heldLine}` : ''}${outcomesText}${errorsBlock}\n\nReview pending opportunities: ${adminUrl}\n\nAgent run at ${summary.finishedAt}, week ${summary.weekIdentified}, GSC data covers ${summary.gscRange.start} to ${summary.gscRange.end}.`;
 
   const html = renderHtml({
     subject,
@@ -80,6 +85,8 @@ export function composeDigest(args: DigestArgs): { subject: string; html: string
       tableFor('Meta rewrites', summary, 'meta_rewrite'),
       tableFor('On-page tweaks', summary, 'on_page_tweak'),
       tableFor('New article drafts', summary, 'new_article'),
+      heldLine ? `<p style="margin:24px 0 0;color:#666;font-size:13px;">${escapeHtml(heldLine)}</p>` : null,
+      outcomesTable(summary.outcomes ?? []),
     ].filter(Boolean) as string[],
     errors: summary.errors,
     adminUrl,
@@ -94,7 +101,9 @@ function sectionFor(label: string, summary: AgentRunSummary, type: string): stri
   if (items.length === 0) return '';
   const lines = items.map(
     (o) =>
-      `  • ${o.query}  (pos ${o.metrics.position.toFixed(1)}, CTR ${(o.metrics.ctr * 100).toFixed(1)}%, ${o.metrics.impressions} imp)`,
+      `  • ${o.query}  (pos ${o.metrics.position.toFixed(1)}, CTR ${(o.metrics.ctr * 100).toFixed(1)}%, ${o.metrics.impressions} imp)` +
+      (o.relatedQueries?.length ? `\n      + ${o.relatedQueries.map((r) => r.query).join(', ')}` : '') +
+      (o.competingPages?.length ? `\n      ⚠ split with ${o.competingPages.map((p) => shortPath(p.page)).join(', ')}` : ''),
   );
   return `${label} (${items.length}):\n${lines.join('\n')}`;
 }
@@ -106,7 +115,15 @@ function tableFor(label: string, summary: AgentRunSummary, type: string): string
     .map(
       (o) => `
         <tr>
-          <td style="padding:8px;border-bottom:1px solid #eee;">${escapeHtml(o.query)}</td>
+          <td style="padding:8px;border-bottom:1px solid #eee;">${escapeHtml(o.query)}${
+            o.relatedQueries?.length
+              ? `<div style="color:#666;font-size:12px;">+ ${escapeHtml(o.relatedQueries.map((r) => r.query).join(', '))}</div>`
+              : ''
+          }${
+            o.competingPages?.length
+              ? `<div style="color:#a35b00;font-size:12px;">⚠ split with ${escapeHtml(o.competingPages.map((p) => shortPath(p.page)).join(', '))}</div>`
+              : ''
+          }</td>
           <td style="padding:8px;border-bottom:1px solid #eee;text-align:right;">${o.metrics.position.toFixed(1)}</td>
           <td style="padding:8px;border-bottom:1px solid #eee;text-align:right;">${(o.metrics.ctr * 100).toFixed(1)}%</td>
           <td style="padding:8px;border-bottom:1px solid #eee;text-align:right;">${o.metrics.impressions}</td>
@@ -126,6 +143,70 @@ function tableFor(label: string, summary: AgentRunSummary, type: string): string
       </thead>
       <tbody>${rows}</tbody>
     </table>`;
+}
+
+const VERDICT_LABEL: Record<OutcomeCheck['verdict'], string> = {
+  improved: '▲ improved',
+  flat: '– flat',
+  worse: '▼ worse',
+  gone: '∅ no impressions',
+};
+
+const OUTCOME_CAVEAT =
+  'Compared with the metrics when each was raised, 6–26 weeks ago. Position is the fair signal; clicks and impressions also move with the season.';
+
+function fmtOutcome(o: OutcomeCheck): { before: string; now: string } {
+  const before = `pos ${o.before.position.toFixed(1)} · ${o.before.clicks}c/${o.before.impressions}i`;
+  const now = o.now ? `pos ${o.now.position.toFixed(1)} · ${o.now.clicks}c/${o.now.impressions}i` : '—';
+  return { before, now };
+}
+
+function outcomesSection(outcomes: OutcomeCheck[]): string {
+  if (outcomes.length === 0) return '';
+  const lines = outcomes.map((o) => {
+    const f = fmtOutcome(o);
+    return `  ${VERDICT_LABEL[o.verdict]}  ${o.query}  (${f.before} → ${f.now})`;
+  });
+  return `\n\nDid past changes work? (${outcomes.length})\n${OUTCOME_CAVEAT}\n${lines.join('\n')}`;
+}
+
+function outcomesTable(outcomes: OutcomeCheck[]): string | null {
+  if (outcomes.length === 0) return null;
+  const color = { improved: '#1d6b2f', flat: '#666', worse: '#a31f1f', gone: '#a35b00' } as const;
+  const rows = outcomes
+    .map((o) => {
+      const f = fmtOutcome(o);
+      return `
+        <tr>
+          <td style="padding:8px;border-bottom:1px solid #eee;">${escapeHtml(o.query)}<div style="color:#888;font-size:12px;">#${o.id} · ${escapeHtml(o.type.replace(/_/g, ' '))}</div></td>
+          <td style="padding:8px;border-bottom:1px solid #eee;color:#666;">${escapeHtml(f.before)}</td>
+          <td style="padding:8px;border-bottom:1px solid #eee;">${escapeHtml(f.now)}</td>
+          <td style="padding:8px;border-bottom:1px solid #eee;color:${color[o.verdict]};white-space:nowrap;">${escapeHtml(VERDICT_LABEL[o.verdict])}</td>
+        </tr>`;
+    })
+    .join('');
+  return `
+    <h3 style="margin:24px 0 4px;font-size:15px;">Did past changes work? (${outcomes.length})</h3>
+    <p style="margin:0 0 8px;color:#666;font-size:12px;">${escapeHtml(OUTCOME_CAVEAT)}</p>
+    <table style="width:100%;border-collapse:collapse;font-size:13px;">
+      <thead>
+        <tr style="text-align:left;color:#666;">
+          <th style="padding:8px;border-bottom:1px solid #ddd;font-weight:600;">Query</th>
+          <th style="padding:8px;border-bottom:1px solid #ddd;font-weight:600;">When raised</th>
+          <th style="padding:8px;border-bottom:1px solid #ddd;font-weight:600;">Now</th>
+          <th style="padding:8px;border-bottom:1px solid #ddd;font-weight:600;"></th>
+        </tr>
+      </thead>
+      <tbody>${rows}</tbody>
+    </table>`;
+}
+
+function shortPath(url: string): string {
+  try {
+    return new URL(url).pathname;
+  } catch {
+    return url;
+  }
 }
 
 function renderHtml(args: {
@@ -151,7 +232,7 @@ function renderHtml(args: {
     ${args.sections.join('\n')}
     ${errorsBlock}
     <p style="margin:32px 0 0;text-align:center;">
-      <a href="${escapeHtml(args.adminUrl)}" style="display:inline-block;background:#111;color:#fff;text-decoration:none;padding:12px 20px;border-radius:6px;font-size:14px;font-weight:600;">Review this week's opportunities</a>
+      <a href="${escapeHtml(args.adminUrl)}" style="display:inline-block;background:#111;color:#fff;text-decoration:none;padding:12px 20px;border-radius:6px;font-size:14px;font-weight:600;">Review pending opportunities</a>
     </p>
     <p style="margin:24px 0 0;color:#888;font-size:12px;text-align:center;">${escapeHtml(args.runFooter)}</p>
   </div>

@@ -28,7 +28,9 @@ export function getAnthropic(): Anthropic {
 /** Rough token-cost tracker. Per-million prices, approximate. */
 const PRICE_PER_M: Record<string, { input: number; output: number }> = {
   [HAIKU_MODEL]: { input: 1.0, output: 5.0 }, // USD per million
-  [OPUS_MODEL]: { input: 15.0, output: 75.0 },
+  // Opus 4.7 is $5/$25. This said $15/$75 (Opus 4.1-era pricing), so the
+  // $2.50 soft cap tripped after ~$0.83 of real spend and starved drafts.
+  [OPUS_MODEL]: { input: 5.0, output: 25.0 },
 };
 
 export class TokenBudget {

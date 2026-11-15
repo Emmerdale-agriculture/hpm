@@ -96,9 +96,16 @@ export function articleScore(row: { impressions: number; position: number }): nu
  */
 export function groupByQuery(rows: Array<{ keys?: string[] } & Omit<GscRowPlus, 'query' | 'page'>>): GscRowPlus[] {
   const byQuery = new Map<string, GscRowPlus>();
+  const allPages = new Map<string, Array<{ page: string; impressions: number; position: number }>>();
   for (const r of rows) {
     const query = r.keys?.[0];
     if (!query) continue;
+    const page = r.keys?.[1];
+    if (page) {
+      const list = allPages.get(query) ?? [];
+      list.push({ page, impressions: r.impressions, position: r.position });
+      allPages.set(query, list);
+    }
     const existing = byQuery.get(query);
     // Most impressions wins; ties break toward the better-ranked page.
     if (
@@ -108,7 +115,7 @@ export function groupByQuery(rows: Array<{ keys?: string[] } & Omit<GscRowPlus, 
     ) {
       byQuery.set(query, {
         query,
-        page: r.keys?.[1],
+        page,
         clicks: r.clicks,
         impressions: r.impressions,
         ctr: r.ctr,
@@ -116,8 +123,23 @@ export function groupByQuery(rows: Array<{ keys?: string[] } & Omit<GscRowPlus, 
       });
     }
   }
+  // Keep the secondary pages as a SIGNAL (not folded into the metrics — see
+  // above): a second URL with a real share of the impressions means Google
+  // can't decide which page owns the query, which no added H2 fixes. This is
+  // what "paddock maintenance" did for months (homepage vs post 55 vs pillar).
+  for (const row of byQuery.values()) {
+    const others = (allPages.get(row.query) ?? [])
+      .filter((p) => p.page !== row.page)
+      .filter((p) => p.impressions >= Math.max(SPLIT_MIN_IMPRESSIONS, row.impressions * SPLIT_MIN_SHARE))
+      .sort((a, b) => b.impressions - a.impressions);
+    if (others.length) row.otherPages = others;
+  }
   return Array.from(byQuery.values());
 }
+
+/** A secondary URL counts as competing at ≥10 impressions AND ≥20% of the primary's. */
+const SPLIT_MIN_IMPRESSIONS = 10;
+const SPLIT_MIN_SHARE = 0.2;
 
 /**
  * Strip queries that mention competitor brand names. Brief §10:

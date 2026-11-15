@@ -28,6 +28,11 @@ export type ClassifierVerdict = OpportunityType | 'skip';
 export type GscRowPlus = GscRow & {
   query: string;
   page?: string;
+  /**
+   * Other site URLs Google served for this query with meaningful volume
+   * (see groupByQuery). Non-empty means the query is split — cannibalisation.
+   */
+  otherPages?: Array<{ page: string; impressions: number; position: number }>;
 };
 
 export type Classification = {
@@ -86,6 +91,14 @@ export type OpportunityBase = {
     expectedCtr?: number;
   };
   rationale: string;
+  /**
+   * Other queries clustered into this opportunity because GSC serves the
+   * same page for them (e.g. "grass harrowing" + "harrowing grass"). Each
+   * is persisted as its own superseded row so the cooldown covers it.
+   */
+  relatedQueries?: Array<{ query: string; impressions: number; position: number }>;
+  /** Other URLs on the site Google shows for the primary query. */
+  competingPages?: Array<{ page: string; impressions: number; position: number }>;
   /** Slug or URL of the page the opportunity targets, if any. */
   targetPageSlug?: string;
   /** Resolved Payload doc id for the targetPage relationship, set by persist. */
@@ -131,7 +144,23 @@ export type AgentRunSummary = {
     superseded: number;
   };
   opportunities: Opportunity[];
+  /** Queries that qualified but were held back by the cooldown (no draft). */
+  heldBack: Array<{ query: string; type: OpportunityType; priorId: number }>;
+  /** Completed opportunities 6–26 weeks old, re-measured against this run's GSC pull. */
+  outcomes: OutcomeCheck[];
   errors: string[];
+};
+
+export type OutcomeCheck = {
+  id: number;
+  query: string;
+  type: OpportunityType;
+  decidedAt: string;
+  weekIdentified: string;
+  before: { impressions: number; clicks: number; position: number };
+  /** null = the query had no impressions in this run's window. */
+  now: { impressions: number; clicks: number; position: number; page?: string } | null;
+  verdict: 'improved' | 'flat' | 'worse' | 'gone';
 };
 
 /** ISO-week label, e.g. "2026-W17". UTC week, ISO 8601. */
