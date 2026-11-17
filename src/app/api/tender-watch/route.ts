@@ -12,7 +12,7 @@
  */
 
 import { NextResponse } from 'next/server';
-import { checkCronAuth } from '../seo-agent/lib/auth';
+import { checkCronAuth } from '../cheatcode/lib/auth';
 import { runTenderWatch, type WatchSummary } from '@/lib/tenders/watch';
 
 export const maxDuration = 300;

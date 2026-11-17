@@ -22,7 +22,7 @@ export async function sendDigest(args: DigestArgs): Promise<{ ok: boolean; error
   const from =
     process.env.EMAIL_FROM ||
     process.env.CONTACT_FORM_FROM ||
-    'HPM SEO Agent <onboarding@resend.dev>';
+    'HPM Cheatcode <onboarding@resend.dev>';
   const { subject, html, text } = composeDigest(args);
 
   try {

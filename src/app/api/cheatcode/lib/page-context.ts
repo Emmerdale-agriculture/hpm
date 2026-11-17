@@ -45,7 +45,7 @@ export async function fetchPageContext(pageUrl: string): Promise<PageContext | n
   if (!pageUrl) return null;
   try {
     const res = await fetch(pageUrl, {
-      headers: { 'User-Agent': 'HPM-SEO-Agent/1.0 (+internal)' },
+      headers: { 'User-Agent': 'HPM-Cheatcode/1.0 (+internal)' },
       signal: AbortSignal.timeout(FETCH_TIMEOUT_MS),
       redirect: 'follow',
       cache: 'no-store',

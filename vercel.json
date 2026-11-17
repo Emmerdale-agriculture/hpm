@@ -2,7 +2,7 @@
   "$schema": "https://openapi.vercel.sh/vercel.json",
   "crons": [
     {
-      "path": "/api/seo-agent",
+      "path": "/api/cheatcode",
       "schedule": "0 7 1 * *"
     },
     {

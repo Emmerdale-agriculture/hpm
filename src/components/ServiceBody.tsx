@@ -29,7 +29,7 @@ export function ServiceBody({ lede, body, aside }: Props) {
         )}
         <div className={styles.body}>{body}</div>
       </main>
-      {/* data-page-facts: the SEO agent reads this as the page's equipment/timing ground truth. */}
+      {/* data-page-facts: Cheatcode reads this as the page's equipment/timing ground truth. */}
       <aside className={styles.aside} data-page-facts>
         {aside}
       </aside>

@@ -1,9 +1,9 @@
 /**
- * GET /api/seo-agent — monthly cron entrypoint.
+ * GET /api/cheatcode — monthly cron entrypoint.
  *
  * Authenticated by the `Authorization: Bearer <CRON_SECRET>` header
  * Vercel sends to scheduled invocations. Same path is used for the
- * manual trigger via /api/seo-agent/run (POST).
+ * manual trigger via /api/cheatcode/run (POST).
  *
  * Schedule is defined in vercel.json: 07:00 UTC on the 1st of each month.
  */
@@ -47,7 +47,7 @@ export async function GET(req: Request) {
   } catch (err) {
     // Never let an unexpected throw leak a stack trace to the caller, and
     // make the cron failure visible in logs rather than a silent 500.
-    console.error('[seo-agent] run failed:', err);
+    console.error('[cheatcode] run failed:', err);
     return NextResponse.json({ ok: false, error: 'internal error' }, { status: 500 });
   }
 }

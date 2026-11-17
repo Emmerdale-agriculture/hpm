@@ -1,9 +1,9 @@
 import type { CollectionConfig } from 'payload';
 
 /**
- * SeoOpportunities — drafts produced by the weekly SEO agent.
+ * SeoOpportunities — drafts produced by the weekly Cheatcode SEO agent.
  *
- * Populated by the cron at /api/seo-agent. The agent never publishes;
+ * Populated by the cron at /api/cheatcode. The agent never publishes;
  * everything lands here as `pending` for Tom to review and act on.
  *
  * Uniqueness: weekIdentified + query + type — re-running the same
@@ -15,7 +15,7 @@ export const SeoOpportunities: CollectionConfig = {
   admin: {
     useAsTitle: 'query',
     defaultColumns: ['query', 'type', 'status', 'weekIdentified', 'metrics.impressions', 'metrics.position'],
-    group: 'SEO Agent',
+    group: 'Cheatcode',
     description:
       'Weekly opportunities surfaced by the agent. Review pending rows and apply the suggested changes by hand.',
   },

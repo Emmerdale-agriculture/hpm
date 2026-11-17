@@ -1,5 +1,5 @@
 /**
- * POST /api/seo-agent/run — manual off-cycle trigger.
+ * POST /api/cheatcode/run — manual off-cycle trigger.
  *
  * Same auth as the cron: `Authorization: Bearer <CRON_SECRET>`.
  * Useful for re-running a week's data after fixing a bug, or running
@@ -45,7 +45,7 @@ export async function POST(req: Request) {
       opportunities: dryRun ? summary.opportunities : undefined,
     });
   } catch (err) {
-    console.error('[seo-agent] manual run failed:', err);
+    console.error('[cheatcode] manual run failed:', err);
     return NextResponse.json({ ok: false, error: 'internal error' }, { status: 500 });
   }
 }

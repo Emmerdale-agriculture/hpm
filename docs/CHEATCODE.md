@@ -1,4 +1,4 @@
-# SEO Agent
+# Cheatcode
 
 Weekly automated agent that ingests Google Search Console performance data,
 identifies three categories of underperforming queries, and produces draft
@@ -38,9 +38,9 @@ meta_rewrite benchmark).
 ```
 src/payload/collections/seo-opportunities.ts   # Payload collection
 src/payload/collections/posts.ts                # adds `seoSource` field
-src/app/api/seo-agent/route.ts                  # GET — cron entrypoint
-src/app/api/seo-agent/run/route.ts              # POST — manual trigger
-src/app/api/seo-agent/lib/
+src/app/api/cheatcode/route.ts                  # GET — cron entrypoint
+src/app/api/cheatcode/run/route.ts              # POST — manual trigger
+src/app/api/cheatcode/lib/
   ├── types.ts                                  # shared shapes + ISO week + CTR table
   ├── triage.ts                                 # threshold rules
   ├── anthropic.ts                              # SDK wrapper + token budget
@@ -50,7 +50,7 @@ src/app/api/seo-agent/lib/
   ├── persist.ts                                # Payload Local API writes
   ├── digest.ts                                 # Resend email composer
   └── orchestrate.ts                            # runs the pipeline end-to-end
-scripts/seo-agent-local.mjs                     # dry-run harness
+scripts/cheatcode-local.mjs                     # dry-run harness
 vercel.json                                     # cron entry: 1st of each month, 07:00 UTC
 ```
 
@@ -89,17 +89,17 @@ In another, after sourcing `.env.local`:
 
 ```bash
 set -a && source .env.local && set +a
-node scripts/seo-agent-local.mjs                  # logs candidates, no email, no Payload writes
-node scripts/seo-agent-local.mjs --send-test-email # also sends the digest to DIGEST_TO_EMAIL
+node scripts/cheatcode-local.mjs                  # logs candidates, no email, no Payload writes
+node scripts/cheatcode-local.mjs --send-test-email # also sends the digest to DIGEST_TO_EMAIL
 ```
 
-A snapshot of each run is written to `extracted/seo-agent/run_<ts>.json`
+A snapshot of each run is written to `extracted/cheatcode/run_<ts>.json`
 for diffing across iterations while tuning prompts.
 
 ## Triggering an off-cycle run in production
 
 ```bash
-curl -X POST https://hampshirepaddockmanagement.com/api/seo-agent/run \
+curl -X POST https://hampshirepaddockmanagement.com/api/cheatcode/run \
   -H "Authorization: Bearer $CRON_SECRET"
 ```
 
@@ -172,7 +172,7 @@ brief is happy with manual reformatting since Tom reviews everything anyway.
 
 ## Diagnosing failures
 
-Every Claude call is logged with `[seo-agent]` prefix in Vercel function
+Every Claude call is logged with `[cheatcode]` prefix in Vercel function
 logs. The digest email always includes an `Errors during run:` block when
 non-empty. Common ones:
 

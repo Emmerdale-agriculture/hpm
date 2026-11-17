@@ -1,5 +1,5 @@
 /**
- * Shared types for the weekly SEO agent.
+ * Shared types for the weekly Cheatcode SEO agent.
  *
  * The pipeline shape:
  *   GscRowPlus -> ClassifiedQuery -> Opportunity (one of three variants)

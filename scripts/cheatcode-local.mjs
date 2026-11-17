@@ -1,21 +1,21 @@
 #!/usr/bin/env node
 /**
- * scripts/seo-agent-local.mjs
+ * scripts/cheatcode-local.mjs
  *
- * Local dry-run harness for the weekly SEO agent. Hits the running dev
- * server's /api/seo-agent/run endpoint with dryRun=1, pretty-prints the
+ * Local dry-run harness for the weekly Cheatcode SEO agent. Hits the running dev
+ * server's /api/cheatcode/run endpoint with dryRun=1, pretty-prints the
  * resulting opportunities, and optionally sends the digest to a test
  * inbox so the email render can be reviewed.
  *
  * Usage:
  *   set -a && source .env.local && set +a
  *   npm run dev   # in another shell
- *   node scripts/seo-agent-local.mjs                  # dry-run, no email
- *   node scripts/seo-agent-local.mjs --send-test-email
- *   node scripts/seo-agent-local.mjs --base http://localhost:3001
+ *   node scripts/cheatcode-local.mjs                  # dry-run, no email
+ *   node scripts/cheatcode-local.mjs --send-test-email
+ *   node scripts/cheatcode-local.mjs --base http://localhost:3001
  *
  * Output: prints the AgentRunSummary JSON to stdout; writes the same
- * JSON to extracted/seo-agent/<runId>.json for diffing across runs.
+ * JSON to extracted/cheatcode/<runId>.json for diffing across runs.
  */
 
 import fs from 'node:fs/promises';
@@ -38,7 +38,7 @@ if (!secret) {
   process.exit(1);
 }
 
-const url = new URL('/api/seo-agent/run', baseUrl);
+const url = new URL('/api/cheatcode/run', baseUrl);
 url.searchParams.set('dryRun', '1');
 if (sendEmail) url.searchParams.set('sendEmail', '1');
 
@@ -84,7 +84,7 @@ if (showOpportunities && Array.isArray(data.opportunities)) {
 }
 
 // Snapshot for diffing across runs
-const outDir = path.join(process.cwd(), 'extracted', 'seo-agent');
+const outDir = path.join(process.cwd(), 'extracted', 'cheatcode');
 await fs.mkdir(outDir, { recursive: true });
 const outPath = path.join(outDir, `${data.runId}.json`);
 await fs.writeFile(outPath, JSON.stringify(data, null, 2));

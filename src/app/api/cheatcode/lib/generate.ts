@@ -113,7 +113,7 @@ export async function generateArticle(
     });
     return validateArticle(draft);
   } catch (err) {
-    console.error('[seo-agent] generateArticle failed', err);
+    console.error('[cheatcode] generateArticle failed', err);
     return null;
   }
 }
@@ -152,7 +152,7 @@ export async function generateMetaRewrite(
     });
     return validateMeta(draft);
   } catch (err) {
-    console.error('[seo-agent] generateMetaRewrite failed', err);
+    console.error('[cheatcode] generateMetaRewrite failed', err);
     return null;
   }
 }
@@ -200,7 +200,7 @@ export async function generateOnPageTweak(
     });
     return validateOnPage(draft, args.page, args.siteMap, args.url);
   } catch (err) {
-    console.error('[seo-agent] generateOnPageTweak failed', err);
+    console.error('[cheatcode] generateOnPageTweak failed', err);
     return null;
   }
 }

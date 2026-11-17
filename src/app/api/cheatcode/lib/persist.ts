@@ -185,7 +185,7 @@ export async function persistOpportunity(
       postId = await createDraftPost(payload, opp);
     } catch (err) {
       postError = `Post draft create failed: ${err instanceof Error ? err.message : String(err)}`;
-      console.error('[seo-agent]', postError);
+      console.error('[cheatcode]', postError);
     }
   }
 
@@ -222,7 +222,7 @@ export async function persistOpportunity(
  *
  * Body conversion: markdown is dropped into a single richText block as
  * a paragraph of plain text. Tom reformats during review — see
- * docs/SEO-AGENT.md. Auto markdown→Lexical-blocks is a v2 upgrade.
+ * docs/CHEATCODE.md. Auto markdown→Lexical-blocks is a v2 upgrade.
  *
  * Throws on failure so the caller can surface the error to the digest.
  */
