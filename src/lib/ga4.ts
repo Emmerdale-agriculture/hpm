@@ -28,9 +28,37 @@ export function isGa4Configured(): boolean {
   return Boolean(process.env.GA4_PROPERTY_ID);
 }
 
+/**
+ * The GA4 property is shared with emmerdaleagriculture.com, which sends ~10×
+ * the traffic and has many of the same paths ("/", "/services",
+ * "/paddock-maintenance"...). Every report is therefore filtered to this
+ * site's hostname, or per-path numbers silently mix both sites.
+ *
+ * Host comes from GA4_HOSTNAME if set, else from GSC_SITE_URL
+ * ("sc-domain:example.com" or "https://example.com/").
+ */
+export function ga4Hostname(): string {
+  const explicit = process.env.GA4_HOSTNAME?.trim();
+  if (explicit) return explicit.replace(/^www\./, '');
+  const site = process.env.GSC_SITE_URL ?? '';
+  const host = site.startsWith('sc-domain:')
+    ? site.slice('sc-domain:'.length)
+    : (() => {
+        try {
+          return new URL(site).hostname;
+        } catch {
+          return '';
+        }
+      })();
+  const clean = host.trim().replace(/^www\./, '');
+  if (!clean) throw new Error('GA4 host unknown: set GA4_HOSTNAME or GSC_SITE_URL');
+  return clean;
+}
+
 export async function runGa4Report(args: Ga4ReportArgs): Promise<Ga4Row[]> {
   const propertyId = process.env.GA4_PROPERTY_ID;
   if (!propertyId) throw new Error('GA4_PROPERTY_ID not set');
+  const host = ga4Hostname();
   const token = await getGoogleAccessToken();
 
   const body: Record<string, unknown> = {
@@ -38,6 +66,12 @@ export async function runGa4Report(args: Ga4ReportArgs): Promise<Ga4Row[]> {
     dimensions: args.dimensions.map((name) => ({ name })),
     metrics: args.metrics.map((name) => ({ name })),
     limit: String(args.rowLimit ?? 100),
+    dimensionFilter: {
+      filter: {
+        fieldName: 'hostName',
+        inListFilter: { values: [host, `www.${host}`] },
+      },
+    },
   };
   if (args.orderBy) {
     body.orderBys = [
