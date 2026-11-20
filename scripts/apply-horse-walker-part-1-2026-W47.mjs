@@ -20,8 +20,11 @@
  *
  *   Prod (dry-run first, then add --execute):
  *     DATABASE_URL="$(grep -m1 '^DATABASE_URL_PROD=' .env.local | cut -d= -f2- | tr -d '"')" \
- *       node_modules/.bin/tsx --env-file=.env.local \
+ *       node_modules/.bin/tsx --env-file=.env.local --env-file=.env.vercel \
  *       scripts/apply-horse-walker-part-1-2026-W47.mjs --execute
+ *
+ * .env.vercel is needed for the S3 (media storage) keys; .env.local alone fails
+ * the upload with "a non-empty Access Key (AKID) must be provided".
  *
  * Photos default to ~/photos/horse-walker-part1; override with
  * HORSE_WALKER_PHOTOS=/some/dir.
