@@ -48,6 +48,30 @@ const ERROR_COPY: Record<RequiredField, string> = {
 
 type Status = 'idle' | 'submitting' | 'success' | 'error';
 
+/**
+ * Report a successful enquiry to GA4 as `generate_lead` (GA4's recommended
+ * lead event, already marked as a key event). Fired only after /api/contact
+ * accepts the form — not on page view. gtag loads lazyOnload, so if it isn't
+ * defined yet the call is queued on dataLayer in gtag's own format and sent
+ * when the script arrives. No-op in dev (GA isn't loaded there either).
+ */
+function trackLead(service: string) {
+  if (process.env.NODE_ENV !== 'production') return;
+  const w = window as unknown as { gtag?: (...a: unknown[]) => void; dataLayer?: unknown[] };
+  const params = { form: 'contact', service: service || 'unspecified' };
+  if (typeof w.gtag === 'function') {
+    w.gtag('event', 'generate_lead', params);
+  } else {
+    w.dataLayer = w.dataLayer || [];
+    // gtag() pushes its `arguments` object; mirror that shape.
+    const queue = function (this: unknown) {
+      // eslint-disable-next-line prefer-rest-params
+      w.dataLayer!.push(arguments);
+    } as (...a: unknown[]) => void;
+    queue('event', 'generate_lead', params);
+  }
+}
+
 export function ContactForm() {
   const params = useSearchParams();
   const preselected = params.get('service') ?? '';
@@ -118,6 +142,7 @@ export function ContactForm() {
         return;
       }
       setStatus('success');
+      trackLead(payload.service);
       formEl.reset();
       setService(preselected);
     } catch {
