@@ -268,3 +268,23 @@ tells them **which pages to point links at**. Schema change: apply
 - **Settings** live under Admin → Cheatcode → Cheatcode settings: DA band
   (default 30–40, the agency's range as of Nov 2026), links per month (10),
   max pages (3). Set links per month to 0 to switch the brief off.
+
+### Backlink campaign button (2026-11-20)
+
+The sidebar has a **🔗 Backlink campaign** button that opens
+`/admin-stats/backlinks` (also a "Backlinks" tab on the dashboard). Pick the
+links, DA band and max pages, then **Preview brief** (a plain GET, saves
+nothing). That shows the target pages, the target DA, one anchor per link,
+GA4 numbers and a copy-ready brief for the agency. **Create campaign** saves
+the targets as pending `link_target` opportunities. Tick "Also make these the
+monthly default" to write the numbers into Cheatcode settings for the
+1st-of-month run.
+
+- The cron and the button share `lib/link-brief.ts`, so they pick pages identically.
+- Pages are never more than links (`min(maxLinkPages, links)`): at 1 link a
+  month only the top page is briefed.
+- `anchorPlan` gives one anchor per link from a 10-slot cycle of the mix
+  (Sainte-Laguë order), offset by month. At 1 link a month each month gets a
+  single anchor, and over ten months the anchors add up to the 20/20/40/20 mix.
+- Same ISO week = same campaign (idempotent). In later weeks the 120-day
+  per-page cooldown moves the brief on to the next page.

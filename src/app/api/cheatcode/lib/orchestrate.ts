@@ -26,20 +26,12 @@ import {
 } from './persist';
 import { fetchPageContext, type PageContext } from './page-context';
 import { reviewOutcomes } from './outcomes';
-import {
-  allocateLinks,
-  averageTargetDa,
-  buildLinkDraft,
-  normaliseLinkSettings,
-  rankLinkCandidates,
-  type LinkCandidate,
-} from './link-targets';
+import { readLinkSettings, runLinkBrief } from './link-brief';
 import { articleScore, groupByQuery, isCompetitorQuery, triageRow } from './triage';
 import {
   expectedCtrForPosition,
   isoWeekLabel,
   type AgentRunSummary,
-  type LinkTargetOpportunity,
   type Opportunity,
   type PageAnalytics,
   type QueryOpportunityType,
@@ -335,57 +327,22 @@ export async function runAgent(opts: RunOptions): Promise<AgentRunSummary> {
   //     last 120 days, or still pending, gives its slot to the next one.
   let linkBrief: AgentRunSummary['linkBrief'] = null;
   try {
-    let rawSettings: Record<string, unknown> | null = null;
-    try {
-      rawSettings = (await payload.findGlobal({ slug: 'cheatcode-settings', depth: 0 })) as unknown as Record<string, unknown>;
-    } catch (err) {
-      errors.push(`Cheatcode settings unreadable, using defaults (DA 30–40): ${err instanceof Error ? err.message : String(err)}`);
-    }
-    const settings = normaliseLinkSettings(rawSettings);
-    if (settings.linksPerMonth > 0) {
-      const { ranked, lowEngagement } = rankLinkCandidates(grouped, {
-        isExcludedPage: (url) => isCommentaryUrl(url),
-        isExcludedQuery: (q) => isCompetitorQuery(q),
-        analyticsFor: (url) => analyticsFor(url),
-      });
-      const chosen: LinkCandidate[] = [];
-      for (const c of ranked) {
-        if (chosen.length >= settings.maxLinkPages) break;
-        if (await findExistingOpportunity(payload, { weekIdentified, query: c.key, type: 'link_target' })) {
-          chosen.push(c); // already briefed this week (re-run): keep its slot, don't re-persist
-          continue;
-        }
-        const priorId = await findActivePriorOpportunity(payload, c.key);
-        if (priorId) {
-          heldBack.push({ query: c.key, type: 'link_target', priorId });
-          continue;
-        }
-        chosen.push(c);
-      }
-      const alloc = allocateLinks(chosen.map((c) => c.score), settings.linksPerMonth);
-      const drafts = chosen.map((c, i) => buildLinkDraft(c, alloc[i], settings)).filter((d) => d.linksRequested > 0);
-      for (const draft of drafts) {
-        const c = chosen.find((x) => x.page === draft.pageUrl)!;
-        const opp = linkOpportunity(c, draft, weekIdentified, existing);
-        opportunities.push(opp);
-        if (opts.dryRun) continue;
-        try {
-          await persistOpportunity(payload, opp, runId, 'pending');
-        } catch (err) {
-          errors.push(`Persist "${opp.query}" failed: ${err instanceof Error ? err.message : String(err)}`);
-        }
-      }
-      linkBrief = {
-        linksTotal: drafts.reduce((s, d) => s + d.linksRequested, 0),
-        averageTargetDa: averageTargetDa(drafts),
-        daBand: { min: settings.daMin, max: settings.daMax },
-        fixFirst: lowEngagement.slice(0, 5).map((c) => ({
-          path: c.path,
-          sessions: c.analytics?.sessions ?? 0,
-          engagementRate: c.analytics?.engagementRate ?? 0,
-        })),
-      };
-    }
+    const settings = await readLinkSettings(payload, errors);
+    const brief = await runLinkBrief({
+      payload,
+      grouped,
+      existing,
+      analyticsFor,
+      isExcludedPage: (url) => isCommentaryUrl(url),
+      settings,
+      weekIdentified,
+      runId,
+      dryRun: opts.dryRun,
+      errors,
+    });
+    opportunities.push(...brief.opportunities);
+    heldBack.push(...brief.heldBack);
+    linkBrief = brief.linkBrief;
   } catch (err) {
     errors.push(`Link brief failed: ${err instanceof Error ? err.message : String(err)}`);
   }
@@ -726,38 +683,3 @@ function emptySummary(args: {
   };
 }
 
-function linkOpportunity(
-  c: LinkCandidate,
-  draft: LinkTargetOpportunity['draftContent'],
-  weekIdentified: string,
-  existing: ExistingDoc[],
-): LinkTargetOpportunity {
-  const target = resolveTargetPage(c.page, existing);
-  const targetDoc = target ? existing.find((d) => d.id === target.id) : undefined;
-  const a = c.analytics;
-  const ga = a
-    ? ` GA4: ${a.sessions} sessions, ${Math.round(a.engagementRate * 100)}% engaged${a.keyEvents ? `, ${a.keyEvents} key events` : ''}.`
-    : ' GA4: no data for this page.';
-  return {
-    type: 'link_target',
-    query: c.key,
-    // Per-page brief; intent is the page's commercial value, not a query intent.
-    intent: 'commercial',
-    weekIdentified,
-    metrics: {
-      impressions: c.impressions,
-      clicks: c.clicks,
-      ctr: c.impressions > 0 ? c.clicks / c.impressions : 0,
-      position: Math.round(c.position * 10) / 10,
-    },
-    rationale:
-      `Send ${draft.linksRequested} link${draft.linksRequested === 1 ? '' : 's'} at target DA ${draft.targetDa} (band ${draft.daBand.min}–${draft.daBand.max}). ` +
-      `Ranks ${c.position.toFixed(1)} (impression-weighted) for ${c.queries.length} quer${c.queries.length === 1 ? 'y' : 'ies'} with ${c.impressions} impressions — in contention, needs authority.` +
-      ga,
-    targetPageSlug: targetDoc?.slug,
-    targetPageId: target?.id,
-    targetPageCollection: target?.collection,
-    analytics: a,
-    draftContent: draft,
-  };
-}

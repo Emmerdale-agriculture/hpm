@@ -9,6 +9,8 @@ import type { Payload } from 'payload';
  *  - Tenders → the tenders collection, with a count of rows needing
  *    attention (status New, or Watching renewals whose action-by date
  *    has arrived)
+ *  - Backlink campaign → /admin-stats/backlinks (pick link volume + DA
+ *    band, preview the target pages, create the campaign)
  *  - Accounts → external Tally app on Render (opens in a new tab)
  *
  * Rendered via `admin.components.beforeNavLinks` — sits at the very
@@ -90,6 +92,10 @@ export async function SearchConsoleNavLink({ payload }: { payload?: Payload }) {
         ) : (
           <span style={{ opacity: 0.85 }}>→</span>
         )}
+      </Link>
+      <Link href="/admin-stats/backlinks" style={buttonStyle}>
+        <span>🔗 Backlink campaign</span>
+        <span style={{ opacity: 0.85 }}>→</span>
       </Link>
       <a
         href="https://tally-92lo.onrender.com/"

@@ -180,6 +180,8 @@ function linkHeadline(summary: AgentRunSummary, items: LinkTargetOpportunity[]):
 }
 
 function anchorLine(o: LinkTargetOpportunity): string {
+  const plan = o.draftContent.anchorPlan;
+  if (plan?.length) return plan.map((t) => `"${t}"`).join(', ');
   return o.draftContent.anchors.map((a) => `"${a.text}" ${a.share}%`).join(', ');
 }
 

@@ -228,7 +228,36 @@ export function anchorsFor(c: LinkCandidate): LinkTargetDraft['anchors'] {
   return anchors;
 }
 
-export function buildLinkDraft(c: LinkCandidate, links: number, s: LinkSettings): LinkTargetDraft {
+/**
+ * One anchor per link. The mix's shares are spread over a 10-slot cycle
+ * (Sainte-Laguë order, so the big shares interleave rather than bunch),
+ * and each month starts where the previous one would have stopped. At one
+ * link a month the agency gets a single anchor, and over ten months the
+ * anchors still add up to the mix.
+ */
+export function anchorPlan(
+  anchors: LinkTargetDraft['anchors'],
+  links: number,
+  now: Date = new Date(),
+): string[] {
+  if (anchors.length === 0 || links <= 0) return [];
+  const picked = anchors.map(() => 0);
+  const cycle: string[] = [];
+  for (let slot = 0; slot < 10; slot++) {
+    let best = 0;
+    for (let i = 1; i < anchors.length; i++) {
+      if (anchors[i].share / (2 * picked[i] + 1) > anchors[best].share / (2 * picked[best] + 1)) best = i;
+    }
+    picked[best]++;
+    cycle.push(anchors[best].text);
+  }
+  const monthIndex = now.getUTCFullYear() * 12 + now.getUTCMonth();
+  const start = (monthIndex * links) % cycle.length;
+  return Array.from({ length: links }, (_, k) => cycle[(start + k) % cycle.length]);
+}
+
+export function buildLinkDraft(c: LinkCandidate, links: number, s: LinkSettings, now: Date = new Date()): LinkTargetDraft {
+  const anchors = anchorsFor(c);
   return {
     pageUrl: c.page,
     leadQuery: c.queries[0]?.query ?? '',
@@ -236,7 +265,8 @@ export function buildLinkDraft(c: LinkCandidate, links: number, s: LinkSettings)
     linksRequested: links,
     targetDa: targetDaFor(c, s),
     daBand: { min: s.daMin, max: s.daMax },
-    anchors: anchorsFor(c),
+    anchors,
+    anchorPlan: anchorPlan(anchors, links, now),
   };
 }
 

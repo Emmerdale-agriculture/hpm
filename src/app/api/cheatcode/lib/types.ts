@@ -107,6 +107,8 @@ export type LinkTargetDraft = {
   targetDa: number;
   daBand: { min: number; max: number };
   anchors: Array<{ text: string; kind: 'exact' | 'partial' | 'branded' | 'url'; share: number }>;
+  /** One anchor per requested link, rotated monthly so the mix holds over time. */
+  anchorPlan?: string[];
 };
 
 export type DraftContent = MetaRewriteDraft | OnPageTweakDraft | NewArticleDraft | LinkTargetDraft | null;
