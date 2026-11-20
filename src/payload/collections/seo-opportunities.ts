@@ -36,6 +36,7 @@ export const SeoOpportunities: CollectionConfig = {
         { label: 'Meta rewrite', value: 'meta_rewrite' },
         { label: 'On-page tweak', value: 'on_page_tweak' },
         { label: 'New article', value: 'new_article' },
+        { label: 'Backlink target', value: 'link_target' },
       ],
     },
     {
@@ -82,6 +83,14 @@ export const SeoOpportunities: CollectionConfig = {
       ],
     },
     {
+      name: 'analytics',
+      type: 'json',
+      admin: {
+        description:
+          'GA4 for the target page over the same window as the GSC metrics: { sessions, engagedSessions, engagementRate, avgSessionDuration, keyEvents }. Empty when GA4 had no data for the page.',
+      },
+    },
+    {
       name: 'rationale',
       type: 'textarea',
       admin: { description: 'Why the agent flagged this.' },
@@ -90,14 +99,14 @@ export const SeoOpportunities: CollectionConfig = {
       name: 'targetPage',
       type: 'relationship',
       relationTo: ['pages', 'posts', 'services'],
-      admin: { description: 'For meta_rewrite and on_page_tweak.' },
+      admin: { description: 'For meta_rewrite, on_page_tweak and link_target.' },
     },
     {
       name: 'draftContent',
       type: 'json',
       admin: {
         description:
-          'Proposed changes — schema varies by type. meta_rewrite: { alternatives: [{title,meta,rationale}] }. on_page_tweak: { newH2, newH2Body, internalLinksToAdd, faqAdditions }. new_article: { title, metaDescription, slug, bodyMarkdown, suggestedInternalLinks }.',
+          'Proposed changes — schema varies by type. meta_rewrite: { alternatives: [{title,meta,rationale}] }. on_page_tweak: { newH2, newH2Body, internalLinksToAdd, faqAdditions }. new_article: { title, metaDescription, slug, bodyMarkdown, suggestedInternalLinks }. link_target: { pageUrl, leadQuery, queries, linksRequested, targetDa, daBand, anchors }.',
       },
     },
     {

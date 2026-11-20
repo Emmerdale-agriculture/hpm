@@ -11,6 +11,7 @@
  */
 
 import { gscQuery, isoDaysAgo } from '@/lib/gsc';
+import { fetchGa4PageEngagement, isGa4Configured, normaliseGa4Path } from '@/lib/ga4';
 import { TokenBudget } from './anthropic';
 import { classifyQuery, type ClassifyContext } from './classify';
 import { findCollision } from './cannibalisation';
@@ -25,13 +26,23 @@ import {
 } from './persist';
 import { fetchPageContext, type PageContext } from './page-context';
 import { reviewOutcomes } from './outcomes';
+import {
+  allocateLinks,
+  averageTargetDa,
+  buildLinkDraft,
+  normaliseLinkSettings,
+  rankLinkCandidates,
+  type LinkCandidate,
+} from './link-targets';
 import { articleScore, groupByQuery, isCompetitorQuery, triageRow } from './triage';
 import {
   expectedCtrForPosition,
   isoWeekLabel,
   type AgentRunSummary,
+  type LinkTargetOpportunity,
   type Opportunity,
-  type OpportunityType,
+  type PageAnalytics,
+  type QueryOpportunityType,
 } from './types';
 import type { ExistingDoc } from './cannibalisation';
 
@@ -57,7 +68,7 @@ export type RunOptions = {
 };
 
 type WorkItem = {
-  type: OpportunityType;
+  type: QueryOpportunityType;
   row: {
     query: string;
     page?: string;
@@ -104,6 +115,19 @@ export async function runAgent(opts: RunOptions): Promise<AgentRunSummary> {
     return emptySummary({ runId, weekIdentified, startedAt, gscRange, errors });
   }
 
+  // 1b) GA4 engagement per page, same window as GSC. Optional: a GA4 failure
+  //     costs the analytics columns and the engagement gate, not the run.
+  let ga4: Map<string, PageAnalytics> | null = null;
+  if (isGa4Configured()) {
+    try {
+      ga4 = await fetchGa4PageEngagement(gscRange.start, gscRange.end);
+    } catch (err) {
+      errors.push(`GA4 pull failed (run continues without it): ${err instanceof Error ? err.message : String(err)}`);
+    }
+  }
+  const analyticsFor = (url?: string): PageAnalytics | null =>
+    url && ga4 ? (ga4.get(normaliseGa4Path(url)) ?? null) : null;
+
   // 2) Connect to Payload (errors here also non-fatal — we still send the digest)
   let payload: Awaited<ReturnType<typeof getPayloadClient>>;
   let existing: ExistingDoc[];
@@ -147,7 +171,7 @@ export async function runAgent(opts: RunOptions): Promise<AgentRunSummary> {
   //    meta_rewrite when its rank only justifies a new article.
   const classified: Array<{
     row: (typeof triaged)[number]['row'];
-    suggestedType: OpportunityType;
+    suggestedType: QueryOpportunityType;
     classification: Awaited<ReturnType<typeof classifyQuery>>;
   }> = [];
   // Four at a time: Haiku 5.5 thinks before answering, and 30 serial calls
@@ -295,6 +319,7 @@ export async function runAgent(opts: RunOptions): Promise<AgentRunSummary> {
       budget,
       generate: false,
       page: null,
+      analytics: analyticsFor(item.row.page),
     });
     try {
       const result = await persistOpportunity(payload, opp, runId, 'superseded');
@@ -302,6 +327,67 @@ export async function runAgent(opts: RunOptions): Promise<AgentRunSummary> {
     } catch (err) {
       errors.push(`Persist "${opp.query}" failed: ${err instanceof Error ? err.message : String(err)}`);
     }
+  }
+
+  // 9b) Backlink brief for the agency. Per page, not per query; no model
+  //     call, so it's cheap and runs before drafting to survive a timeout.
+  //     Cooldown is per page (key "links → /path"): a page briefed in the
+  //     last 120 days, or still pending, gives its slot to the next one.
+  let linkBrief: AgentRunSummary['linkBrief'] = null;
+  try {
+    let rawSettings: Record<string, unknown> | null = null;
+    try {
+      rawSettings = (await payload.findGlobal({ slug: 'cheatcode-settings', depth: 0 })) as unknown as Record<string, unknown>;
+    } catch (err) {
+      errors.push(`Cheatcode settings unreadable, using defaults (DA 30–40): ${err instanceof Error ? err.message : String(err)}`);
+    }
+    const settings = normaliseLinkSettings(rawSettings);
+    if (settings.linksPerMonth > 0) {
+      const { ranked, lowEngagement } = rankLinkCandidates(grouped, {
+        isExcludedPage: (url) => isCommentaryUrl(url),
+        isExcludedQuery: (q) => isCompetitorQuery(q),
+        analyticsFor: (url) => analyticsFor(url),
+      });
+      const chosen: LinkCandidate[] = [];
+      for (const c of ranked) {
+        if (chosen.length >= settings.maxLinkPages) break;
+        if (await findExistingOpportunity(payload, { weekIdentified, query: c.key, type: 'link_target' })) {
+          chosen.push(c); // already briefed this week (re-run): keep its slot, don't re-persist
+          continue;
+        }
+        const priorId = await findActivePriorOpportunity(payload, c.key);
+        if (priorId) {
+          heldBack.push({ query: c.key, type: 'link_target', priorId });
+          continue;
+        }
+        chosen.push(c);
+      }
+      const alloc = allocateLinks(chosen.map((c) => c.score), settings.linksPerMonth);
+      const drafts = chosen.map((c, i) => buildLinkDraft(c, alloc[i], settings)).filter((d) => d.linksRequested > 0);
+      for (const draft of drafts) {
+        const c = chosen.find((x) => x.page === draft.pageUrl)!;
+        const opp = linkOpportunity(c, draft, weekIdentified, existing);
+        opportunities.push(opp);
+        if (opts.dryRun) continue;
+        try {
+          await persistOpportunity(payload, opp, runId, 'pending');
+        } catch (err) {
+          errors.push(`Persist "${opp.query}" failed: ${err instanceof Error ? err.message : String(err)}`);
+        }
+      }
+      linkBrief = {
+        linksTotal: drafts.reduce((s, d) => s + d.linksRequested, 0),
+        averageTargetDa: averageTargetDa(drafts),
+        daBand: { min: settings.daMin, max: settings.daMax },
+        fixFirst: lowEngagement.slice(0, 5).map((c) => ({
+          path: c.path,
+          sessions: c.analytics?.sessions ?? 0,
+          engagementRate: c.analytics?.engagementRate ?? 0,
+        })),
+      };
+    }
+  } catch (err) {
+    errors.push(`Link brief failed: ${err instanceof Error ? err.message : String(err)}`);
   }
 
   // 10) Cluster same-page, same-type items. GSC splits one intent into many
@@ -360,6 +446,7 @@ export async function runAgent(opts: RunOptions): Promise<AgentRunSummary> {
       budget,
       generate,
       page,
+      analytics: analyticsFor(item.row.page),
     });
     opportunities.push(opp);
     if (opts.dryRun) continue;
@@ -388,6 +475,7 @@ export async function runAgent(opts: RunOptions): Promise<AgentRunSummary> {
         budget,
         generate: false,
         page: null,
+        analytics: analyticsFor(member.row.page),
       });
       try {
         // decidedAt marks this as a real decision (the agent merged it), so
@@ -433,6 +521,7 @@ export async function runAgent(opts: RunOptions): Promise<AgentRunSummary> {
     newArticles: opportunities.filter((o) => o.type === 'new_article' && !(o as { deferred?: boolean }).deferred).length,
     deferred: opportunities.filter((o) => o.type === 'new_article' && (o as { deferred?: boolean }).deferred).length,
     superseded: counts.superseded,
+    linkTargets: opportunities.filter((o) => o.type === 'link_target').length,
   };
   if (!opts.dryRun) {
     try {
@@ -452,6 +541,7 @@ export async function runAgent(opts: RunOptions): Promise<AgentRunSummary> {
         newArticles: open.filter((d) => d.type === 'new_article' && !d.deferred).length,
         deferred: open.filter((d) => d.type === 'new_article' && d.deferred === true).length,
         superseded: docs.filter((d) => d.status === 'superseded').length,
+        linkTargets: open.filter((d) => d.type === 'link_target').length,
       };
     } catch (err) {
       errors.push(`Week-totals query failed: ${err instanceof Error ? err.message : String(err)}`);
@@ -469,6 +559,8 @@ export async function runAgent(opts: RunOptions): Promise<AgentRunSummary> {
       classified: classified.length,
       ...weekTotals,
     },
+    linkBrief,
+    ga4Joined: ga4 !== null,
     opportunities,
     heldBack,
     outcomes,
@@ -486,6 +578,7 @@ async function buildOpportunity(args: {
   budget: TokenBudget;
   generate: boolean;
   page: PageContext | null;
+  analytics?: PageAnalytics | null;
 }): Promise<Opportunity> {
   const { item, weekIdentified, existing, siteMap, servicePages, postSummaries, budget, generate, page } = args;
   const relatedQueries = (item.members ?? []).map((m) => ({
@@ -525,6 +618,7 @@ async function buildOpportunity(args: {
     targetPageSlug: targetDoc?.slug,
     targetPageId: target?.id,
     targetPageCollection: target?.collection,
+    analytics: args.analytics ?? null,
   };
 
   if (item.type === 'meta_rewrite') {
@@ -564,6 +658,7 @@ async function buildOpportunity(args: {
             position: item.row.position,
             siteMap,
             page,
+            analytics: base.analytics,
           },
           budget,
         )
@@ -620,10 +715,49 @@ function emptySummary(args: {
       newArticles: 0,
       deferred: 0,
       superseded: 0,
+      linkTargets: 0,
     },
+    linkBrief: null,
+    ga4Joined: false,
     opportunities: [],
     heldBack: [],
     outcomes: [],
     errors: args.errors,
+  };
+}
+
+function linkOpportunity(
+  c: LinkCandidate,
+  draft: LinkTargetOpportunity['draftContent'],
+  weekIdentified: string,
+  existing: ExistingDoc[],
+): LinkTargetOpportunity {
+  const target = resolveTargetPage(c.page, existing);
+  const targetDoc = target ? existing.find((d) => d.id === target.id) : undefined;
+  const a = c.analytics;
+  const ga = a
+    ? ` GA4: ${a.sessions} sessions, ${Math.round(a.engagementRate * 100)}% engaged${a.keyEvents ? `, ${a.keyEvents} key events` : ''}.`
+    : ' GA4: no data for this page.';
+  return {
+    type: 'link_target',
+    query: c.key,
+    // Per-page brief; intent is the page's commercial value, not a query intent.
+    intent: 'commercial',
+    weekIdentified,
+    metrics: {
+      impressions: c.impressions,
+      clicks: c.clicks,
+      ctr: c.impressions > 0 ? c.clicks / c.impressions : 0,
+      position: Math.round(c.position * 10) / 10,
+    },
+    rationale:
+      `Send ${draft.linksRequested} link${draft.linksRequested === 1 ? '' : 's'} at target DA ${draft.targetDa} (band ${draft.daBand.min}–${draft.daBand.max}). ` +
+      `Ranks ${c.position.toFixed(1)} (impression-weighted) for ${c.queries.length} quer${c.queries.length === 1 ? 'y' : 'ies'} with ${c.impressions} impressions — in contention, needs authority.` +
+      ga,
+    targetPageSlug: targetDoc?.slug,
+    targetPageId: target?.id,
+    targetPageCollection: target?.collection,
+    analytics: a,
+    draftContent: draft,
   };
 }

@@ -12,6 +12,7 @@ import type {
   MetaRewriteDraft,
   OnPageTweakDraft,
   NewArticleDraft,
+  PageAnalytics,
 } from './types';
 
 const ARTICLE_SYSTEM = `You are writing a draft article for Hampshire Paddock Management's website. Tom Oswald, the owner, will review and edit before publishing. Your draft should be ready for him to refine, not perfect.
@@ -170,7 +171,28 @@ export type GenerateOnPageArgs = {
   /** Site pages as full paths ("/services/x", "/notes/y", "/z"). */
   siteMap: Array<{ path: string; title: string }>;
   page?: PageContext | null;
+  /** GA4 for this page over the same window; null when unavailable. */
+  analytics?: PageAnalytics | null;
 };
+
+/**
+ * GA4 line for the on-page prompt. Low engagement means the people who
+ * already land aren't finding the answer, so the new section should lead
+ * with it rather than pad the page out.
+ */
+function analyticsLine(a: PageAnalytics | null | undefined): string[] {
+  if (!a || a.sessions === 0) return [];
+  const rate = Math.round(a.engagementRate * 100);
+  const lines = [
+    `GA4 for this page (same 28 days): ${a.sessions} sessions, ${rate}% engaged, ${Math.round(a.avgSessionDuration)}s average session${a.keyEvents ? `, ${a.keyEvents} key events (enquiries)` : ''}.`,
+  ];
+  if (a.sessions >= 10 && a.engagementRate < 0.35) {
+    lines.push(
+      'Most visitors leave without engaging. Put the direct answer to the target query in the first two sentences of the new section; do not add length for its own sake.',
+    );
+  }
+  return lines;
+}
 
 export async function generateOnPageTweak(
   args: GenerateOnPageArgs,
@@ -188,6 +210,7 @@ export async function generateOnPageTweak(
           : []),
         `Page URL: ${args.url}`,
         `Current position: ${args.position.toFixed(1)}`,
+        ...analyticsLine(args.analytics),
         args.page
           ? formatPageContext(args.page)
           : `Page title (live fetch failed — you have no body; keep suggestions generic and claim no specifics): ${args.excerpt}`,

@@ -99,3 +99,66 @@ export async function fetchGa4PageMetrics(
   }
   return out;
 }
+
+export type Ga4PageEngagement = {
+  sessions: number;
+  engagedSessions: number;
+  /** engagedSessions / sessions, 0–1. */
+  engagementRate: number;
+  /** Seconds. */
+  avgSessionDuration: number;
+  /** GA4 key events (conversions) on the page; 0 if none are configured. */
+  keyEvents: number;
+};
+
+/**
+ * Per-path engagement for the Cheatcode agent: sessions, engagement rate,
+ * average session duration and key events, keyed by pagePath. Paths are
+ * normalised without a trailing slash (except "/") so they join cleanly
+ * against GSC URLs.
+ */
+export async function fetchGa4PageEngagement(
+  startDate: string,
+  endDate: string,
+): Promise<Map<string, Ga4PageEngagement>> {
+  const rows = await runGa4Report({
+    startDate,
+    endDate,
+    dimensions: ['pagePath'],
+    metrics: ['sessions', 'engagedSessions', 'averageSessionDuration', 'keyEvents'],
+    rowLimit: 1000,
+    orderBy: { metric: 'sessions', desc: true },
+  });
+  const out = new Map<string, Ga4PageEngagement>();
+  for (const r of rows) {
+    const path = normaliseGa4Path(r.dimensionValues[0]?.value ?? '');
+    const sessions = Number(r.metricValues[0]?.value ?? 0);
+    const engagedSessions = Number(r.metricValues[1]?.value ?? 0);
+    const avg = Number(r.metricValues[2]?.value ?? 0);
+    const keyEvents = Number(r.metricValues[3]?.value ?? 0);
+    // "/x" and "/x/" can both appear; merge them.
+    const prev = out.get(path);
+    const s = (prev?.sessions ?? 0) + sessions;
+    const e = (prev?.engagedSessions ?? 0) + engagedSessions;
+    out.set(path, {
+      sessions: s,
+      engagedSessions: e,
+      engagementRate: s > 0 ? e / s : 0,
+      avgSessionDuration: s > 0 ? ((prev?.avgSessionDuration ?? 0) * (prev?.sessions ?? 0) + avg * sessions) / s : 0,
+      keyEvents: (prev?.keyEvents ?? 0) + keyEvents,
+    });
+  }
+  return out;
+}
+
+/** "/services/x/?utm=y" or "https://host/services/x/" → "/services/x". */
+export function normaliseGa4Path(urlOrPath: string): string {
+  let p = urlOrPath;
+  try {
+    p = new URL(urlOrPath).pathname;
+  } catch {
+    p = urlOrPath.replace(/[?#].*$/, '');
+  }
+  if (!p.startsWith('/')) p = `/${p}`;
+  return p.length > 1 ? p.replace(/\/+$/, '') : p;
+}

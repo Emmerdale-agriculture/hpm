@@ -20,6 +20,7 @@ Three opportunity types:
 | `meta_rewrite` | Position 1–5, ≥30 imp, CTR < 70% of position-expected | 3 alternative title+meta pairs |
 | `on_page_tweak` | Position >5 and ≤20, ≥30 imp | New H2 + body + internal links + FAQ |
 | `new_article` | Position >20, ≥30 imp, informational/commercial intent | Full markdown draft + linked Posts entry |
+| `link_target` | Per PAGE: queries at pos 4–20 (≥10 imp each, ≥30 per page), not split, not brand | Backlink brief for the agency: links, target DA, anchors |
 
 Bands are contiguous and the impression floor is 30 everywhere — keep this
 table in step with `triage.ts`, which is authoritative. It drifted once and
@@ -38,6 +39,8 @@ meta_rewrite benchmark).
 ```
 src/payload/collections/seo-opportunities.ts   # Payload collection
 src/payload/collections/posts.ts                # adds `seoSource` field
+src/payload/globals/cheatcode-settings.ts       # DA band, links/month, max pages
+src/lib/ga4.ts                                  # fetchGa4PageEngagement (GA4 join)
 src/app/api/cheatcode/route.ts                  # GET — cron entrypoint
 src/app/api/cheatcode/run/route.ts              # POST — manual trigger
 src/app/api/cheatcode/lib/
@@ -232,3 +235,36 @@ own draft. Changes:
   their equipment ground truth. Link suggestions are full site paths, and are de-duplicated by path.
 - Cluster members only start a cooldown when the lead got a draft. Dry runs apply the (read-only) cooldown
   gates, and the digest lists held-back queries. Outcome "gone" is confirmed with an exact GSC lookup first.
+
+## 2026-11-20: GA4 + backlink targets
+
+An external agency builds the site's backlinks and owns their DA. Cheatcode now
+tells them **which pages to point links at**. Schema change: apply
+`docs/cheatcode-links-ga4-prod-migration.sql` to prod BEFORE deploying.
+
+- **GA4 join** (`GA4_PROPERTY_ID`, same OAuth token as GSC): every opportunity
+  stores `analytics` = the target page's sessions, engaged sessions, engagement
+  rate, average session duration and key events over the GSC window. The digest
+  shows a GA4 column. On-page drafts get the numbers too; when under 35% of
+  sessions engage (with ≥10 sessions), the prompt says to answer the query up
+  front rather than add length. If GA4 fails, the run carries on without it.
+- **`link_target` opportunities** (`lib/link-targets.ts`, deterministic):
+  - Page qualifies: the primary page for queries at position 4–20 (≥10
+    impressions each, ≥30 across the page). Excluded: split queries, brand
+    queries (emmerdale/HPM/lumenira/…), utility pages (/contact, /privacy…)
+    and commentary posts.
+  - GA4 gate: pages with ≥10 sessions and under 35% engaged are listed as
+    "fix the page first", not sent to the agency.
+  - Ranking: score = Σ impressions × closeness to position 4. Top
+    `maxLinkPages` win and `linksPerMonth` is split between them by score.
+  - Target DA = daMin + difficulty × (daMax − daMin). Difficulty is 60% rank
+    depth (pos 4→20) and 40% demand (30→900 impressions, log scale). The digest
+    headline gives the **links-weighted average targeted DA**.
+  - Anchors: 20% exact (lead query), up to 20% partial (next queries,
+    word-order variants removed), the rest branded or naked URL.
+  - Keyed `links → /path`, so the 120-day cooldown is per page and a
+    recently briefed page gives its slot to the next one.
+  - The outcome check re-measures the brief's lead query.
+- **Settings** live under Admin → Cheatcode → Cheatcode settings: DA band
+  (default 30–40, the agency's range as of Nov 2026), links per month (10),
+  max pages (3). Set links per month to 0 to switch the brief off.

@@ -6,12 +6,12 @@
  * the brief §4 (meta_rewrite, on_page_tweak, new_article triggers).
  */
 
-import type { GscRowPlus, ClassifiedQuery, OpportunityType } from './types';
+import type { GscRowPlus, ClassifiedQuery, QueryOpportunityType } from './types';
 import { expectedCtrForPosition } from './types';
 
 export type TriageVerdict =
   | { candidate: false; reason: string }
-  | { candidate: true; suggestedType: OpportunityType; reason: string };
+  | { candidate: true; suggestedType: QueryOpportunityType; reason: string };
 
 /**
  * Cheap pre-classification triage. Returns the strongest opportunity type

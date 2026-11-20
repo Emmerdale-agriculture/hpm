@@ -17,12 +17,28 @@ export type Intent =
   | 'informational'
   | 'local';
 
-export type OpportunityType =
+/** Types raised per search query (triage bands + classifier). */
+export type QueryOpportunityType =
   | 'meta_rewrite'
   | 'on_page_tweak'
   | 'new_article';
 
-export type ClassifierVerdict = OpportunityType | 'skip';
+/**
+ * `link_target` is raised per PAGE, not per query: a page the external
+ * backlink agency should point links at this month (see link-targets.ts).
+ */
+export type OpportunityType = QueryOpportunityType | 'link_target';
+
+export type ClassifierVerdict = QueryOpportunityType | 'skip';
+
+/** GA4 engagement for an opportunity's target page (same window as GSC). */
+export type PageAnalytics = {
+  sessions: number;
+  engagedSessions: number;
+  engagementRate: number;
+  avgSessionDuration: number;
+  keyEvents: number;
+};
 
 /** A single GSC row keyed by query (and optionally page) with parsed dims. */
 export type GscRowPlus = GscRow & {
@@ -77,7 +93,23 @@ export type NewArticleDraft = {
   suggestedInternalLinks: Array<{ anchor: string; slug: string }>;
 };
 
-export type DraftContent = MetaRewriteDraft | OnPageTweakDraft | NewArticleDraft | null;
+/**
+ * The brief for the backlink agency: which page, how many links, the DA to
+ * aim for (from the band in Cheatcode settings), and anchor text drawn from
+ * the queries the page is already being shown for.
+ */
+export type LinkTargetDraft = {
+  pageUrl: string;
+  /** Highest-impression query the page is chasing; outcomes re-measure this. */
+  leadQuery: string;
+  queries: Array<{ query: string; impressions: number; clicks: number; position: number }>;
+  linksRequested: number;
+  targetDa: number;
+  daBand: { min: number; max: number };
+  anchors: Array<{ text: string; kind: 'exact' | 'partial' | 'branded' | 'url'; share: number }>;
+};
+
+export type DraftContent = MetaRewriteDraft | OnPageTweakDraft | NewArticleDraft | LinkTargetDraft | null;
 
 export type OpportunityBase = {
   query: string;
@@ -104,6 +136,8 @@ export type OpportunityBase = {
   /** Resolved Payload doc id for the targetPage relationship, set by persist. */
   targetPageId?: number;
   targetPageCollection?: 'pages' | 'posts' | 'services';
+  /** GA4 for the target page; null when GA4 is off or had no row for it. */
+  analytics?: PageAnalytics | null;
 };
 
 export type MetaRewriteOpportunity = OpportunityBase & {
@@ -123,10 +157,16 @@ export type NewArticleOpportunity = OpportunityBase & {
   deferred?: boolean;
 };
 
+export type LinkTargetOpportunity = OpportunityBase & {
+  type: 'link_target';
+  draftContent: LinkTargetDraft;
+};
+
 export type Opportunity =
   | MetaRewriteOpportunity
   | OnPageTweakOpportunity
-  | NewArticleOpportunity;
+  | NewArticleOpportunity
+  | LinkTargetOpportunity;
 
 export type AgentRunSummary = {
   runId: string;
@@ -142,7 +182,18 @@ export type AgentRunSummary = {
     newArticles: number;
     deferred: number;
     superseded: number;
+    linkTargets: number;
   };
+  /** Links-weighted average target DA across this run's backlink targets. */
+  linkBrief: {
+    linksTotal: number;
+    averageTargetDa: number | null;
+    daBand: { min: number; max: number };
+    /** Pages that ranked for a link but GA4 shows losing visitors: fix them first. */
+    fixFirst: Array<{ path: string; sessions: number; engagementRate: number }>;
+  } | null;
+  /** True when GA4 data was joined onto opportunities this run. */
+  ga4Joined: boolean;
   opportunities: Opportunity[];
   /** Queries that qualified but were held back by the cooldown (no draft). */
   heldBack: Array<{ query: string; type: OpportunityType; priorId: number }>;

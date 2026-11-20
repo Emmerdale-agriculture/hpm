@@ -198,6 +198,7 @@ export async function persistOpportunity(
       status,
       weekIdentified: opp.weekIdentified,
       metrics: opp.metrics,
+      analytics: (opp.analytics ?? undefined) as never,
       rationale: postError ? `${opp.rationale}\n\n[${postError}]` : opp.rationale,
       // Polymorphic relationships are over-narrowed in generated types.
       targetPage: targetPage as never,

@@ -53,14 +53,29 @@ export async function reviewOutcomes(
   const seen = new Set<string>();
   const out: OutcomeCheck[] = [];
   for (const d of res.docs) {
-    const query = String(d.query);
-    if (seen.has(query)) continue; // latest decision per query only
-    seen.add(query);
-    const before = {
-      impressions: Number(d.metrics?.impressions ?? 0),
-      clicks: Number(d.metrics?.clicks ?? 0),
-      position: Number(d.metrics?.position ?? 0),
-    };
+    // Link targets are keyed per page ("links → /path"); judge them on the
+    // lead query the brief was written for.
+    const lead =
+      d.type === 'link_target' && d.draftContent && typeof d.draftContent === 'object' && !Array.isArray(d.draftContent)
+        ? (d.draftContent as { leadQuery?: unknown }).leadQuery
+        : undefined;
+    const query = typeof lead === 'string' && lead ? lead : String(d.query);
+    if (seen.has(`${d.type === 'link_target' ? 'L' : 'Q'}|${query}`)) continue; // latest decision per query only
+    seen.add(`${d.type === 'link_target' ? 'L' : 'Q'}|${query}`);
+    // A link target's own metrics are page totals; compare like with like
+    // using the lead query's row as it stood when the brief was written.
+    const leadRow =
+      d.type === 'link_target'
+        ? (d.draftContent as { queries?: Array<{ impressions: number; clicks: number; position: number }> } | null)
+            ?.queries?.[0]
+        : undefined;
+    const before = leadRow
+      ? { impressions: leadRow.impressions, clicks: leadRow.clicks, position: leadRow.position }
+      : {
+          impressions: Number(d.metrics?.impressions ?? 0),
+          clicks: Number(d.metrics?.clicks ?? 0),
+          position: Number(d.metrics?.position ?? 0),
+        };
     const row = current.get(query);
     let nowM: OutcomeCheck['now'] = row
       ? { impressions: row.impressions, clicks: row.clicks, position: row.position, page: row.page }
@@ -84,7 +99,7 @@ export async function reviewOutcomes(
     }
     out.push({
       id: Number(d.id),
-      query,
+      query: d.type === 'link_target' ? `${query} (links → ${String(d.query).replace(/^links → /, '')})` : query,
       type: d.type as OpportunityType,
       decidedAt: String(d.decidedAt),
       weekIdentified: String(d.weekIdentified),

@@ -23,6 +23,7 @@ import { Homepage } from './globals/homepage';
 import { SiteSettings } from './globals/site-settings';
 import { PricingPage } from './globals/pricing-page';
 import { GscAuth } from './globals/gsc-auth';
+import { CheatcodeSettings } from './globals/cheatcode-settings';
 
 const dirname = path.dirname(fileURLToPath(import.meta.url));
 
@@ -73,7 +74,7 @@ export default buildConfig({
     Tenders,
   ],
 
-  globals: [Homepage, SiteSettings, PricingPage, GscAuth],
+  globals: [Homepage, SiteSettings, PricingPage, GscAuth, CheatcodeSettings],
 
   db: postgresAdapter({
     pool: {
