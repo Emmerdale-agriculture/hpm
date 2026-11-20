@@ -47,6 +47,11 @@ function docPath(d: ExistingDoc): string {
   return `/${d.slug}`;
 }
 
+/** A button-made campaign this recent stands in for the cron's monthly brief. */
+const CAMPAIGN_COVERS_DAYS = 25;
+
+class SkipLinkBrief extends Error {}
+
 export type RunOptions = {
   dryRun: boolean;
   /** GSC lookback in days. Brief: 28. */
@@ -327,6 +332,24 @@ export async function runAgent(opts: RunOptions): Promise<AgentRunSummary> {
   //     last 120 days, or still pending, gives its slot to the next one.
   let linkBrief: AgentRunSummary['linkBrief'] = null;
   try {
+    // One campaign a month: if Tom already made this month's with the
+    // Backlink campaign button, the cron doesn't add a second brief (the
+    // cooldown would only push it on to the next page — a double order).
+    const recentCampaign = await payload.find({
+      collection: 'seo-opportunities',
+      where: {
+        and: [
+          { type: { equals: 'link_target' } },
+          { agentRunId: { like: 'campaign_' } },
+          { createdAt: { greater_than: new Date(Date.now() - CAMPAIGN_COVERS_DAYS * 86_400_000).toISOString() } },
+        ],
+      },
+      limit: 1,
+      depth: 0,
+    });
+    if (recentCampaign.docs.length) {
+      throw new SkipLinkBrief(`#${recentCampaign.docs[0].id} (${recentCampaign.docs[0].weekIdentified})`);
+    }
     const settings = await readLinkSettings(payload, errors);
     const brief = await runLinkBrief({
       payload,
@@ -344,7 +367,11 @@ export async function runAgent(opts: RunOptions): Promise<AgentRunSummary> {
     heldBack.push(...brief.heldBack);
     linkBrief = brief.linkBrief;
   } catch (err) {
-    errors.push(`Link brief failed: ${err instanceof Error ? err.message : String(err)}`);
+    if (err instanceof SkipLinkBrief) {
+      linkBrief = { linksTotal: 0, averageTargetDa: null, daBand: { min: 0, max: 0 }, fixFirst: [], coveredBy: err.message };
+    } else {
+      errors.push(`Link brief failed: ${err instanceof Error ? err.message : String(err)}`);
+    }
   }
 
   // 10) Cluster same-page, same-type items. GSC splits one intent into many

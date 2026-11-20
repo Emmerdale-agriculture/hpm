@@ -193,6 +193,8 @@ export type AgentRunSummary = {
     daBand: { min: number; max: number };
     /** Pages that ranked for a link but GA4 shows losing visitors: fix them first. */
     fixFirst: Array<{ path: string; sessions: number; engagementRate: number }>;
+    /** Set when a recent manual campaign already covers this month (cron skipped its brief). */
+    coveredBy?: string;
   } | null;
   /** True when GA4 data was joined onto opportunities this run. */
   ga4Joined: boolean;

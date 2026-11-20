@@ -26,6 +26,23 @@ export const SeoOpportunities: CollectionConfig = {
     delete: ({ req }) => Boolean(req.user),
   },
   defaultSort: '-weekIdentified',
+  hooks: {
+    beforeChange: [
+      // The outcome check only re-measures rows with decidedAt, and nobody
+      // remembered to fill it by hand: stamp it when a row is first marked
+      // completed or rejected. Superseded rows are left alone on purpose —
+      // findActivePriorOpportunity treats decidedAt on those as "a real
+      // decision", which only the agent's clustering should claim.
+      ({ data, originalDoc }) => {
+        const status = data?.status ?? originalDoc?.status;
+        const changed = !originalDoc || originalDoc.status !== status;
+        if (changed && (status === 'completed' || status === 'rejected') && !data?.decidedAt && !originalDoc?.decidedAt) {
+          return { ...data, decidedAt: new Date().toISOString() };
+        }
+        return data;
+      },
+    ],
+  },
   fields: [
     { name: 'query', type: 'text', required: true, index: true },
     {

@@ -75,6 +75,9 @@ export function composeDigest(args: DigestArgs): { subject: string; html: string
 
   const outcomesText = outcomesSection(summary.outcomes ?? []);
   const fixFirst = summary.linkBrief?.fixFirst ?? [];
+  const coveredLine = summary.linkBrief?.coveredBy
+    ? `Backlinks: this month's campaign was already created with the Backlink campaign button (${summary.linkBrief.coveredBy}), so no second brief was added.`
+    : '';
   const fixFirstLine = fixFirst.length
     ? `Not sent to the link agency — GA4 shows visitors leaving these pages (under 35% engaged), so improve the page before buying links to it: ${fixFirst
         .map((p) => `${p.path} (${Math.round(p.engagementRate * 100)}% of ${p.sessions} sessions)`)
@@ -84,7 +87,7 @@ export function composeDigest(args: DigestArgs): { subject: string; html: string
   const heldLine = held.length
     ? `Held back (raised or resolved in the last 120 days, no new draft): ${held.map((h) => `${h.query} (#${h.priorId})`).join(', ')}.`
     : '';
-  const text = `${summaryLine}\n\n${sections}${fixFirstLine ? `\n\n${fixFirstLine}` : ''}${heldLine ? `\n\n${heldLine}` : ''}${outcomesText}${errorsBlock}\n\nReview pending opportunities: ${adminUrl}\n\nAgent run at ${summary.finishedAt}, week ${summary.weekIdentified}, GSC data covers ${summary.gscRange.start} to ${summary.gscRange.end}.`;
+  const text = `${summaryLine}\n\n${sections}${coveredLine ? `\n\n${coveredLine}` : ''}${fixFirstLine ? `\n\n${fixFirstLine}` : ''}${heldLine ? `\n\n${heldLine}` : ''}${outcomesText}${errorsBlock}\n\nReview pending opportunities: ${adminUrl}\n\nAgent run at ${summary.finishedAt}, week ${summary.weekIdentified}, GSC data covers ${summary.gscRange.start} to ${summary.gscRange.end}.`;
 
   const html = renderHtml({
     subject,
@@ -94,6 +97,7 @@ export function composeDigest(args: DigestArgs): { subject: string; html: string
       tableFor('On-page tweaks', summary, 'on_page_tweak'),
       tableFor('New article drafts', summary, 'new_article'),
       linkTable(summary),
+      coveredLine ? `<p style="margin:16px 0 0;color:#666;font-size:13px;">${escapeHtml(coveredLine)}</p>` : null,
       fixFirstLine ? `<p style="margin:12px 0 0;color:#a35b00;font-size:13px;">${escapeHtml(fixFirstLine)}</p>` : null,
       heldLine ? `<p style="margin:24px 0 0;color:#666;font-size:13px;">${escapeHtml(heldLine)}</p>` : null,
       outcomesTable(summary.outcomes ?? []),

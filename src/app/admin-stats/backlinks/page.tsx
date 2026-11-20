@@ -295,7 +295,8 @@ export default async function BacklinksPage({
         )}
         <p className={styles.tableNote}>
           Mark a target <em>completed</em> once the agency&apos;s link is live; the monthly digest then re-measures that
-          page 6–26 weeks later.
+          page 6–26 weeks later. A campaign created here covers the month: the 1st-of-month run won&apos;t add a second
+          brief within 25 days of it.
         </p>
       </section>
     </main>
